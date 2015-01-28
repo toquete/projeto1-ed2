@@ -23,6 +23,7 @@ typedef struct
 
 int Menu();
 void AbreArquivos(FILE **AP1, FILE **AP2, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2);
+void CadastraVacina(FILE **AP1, FILE **AP2);
 void CadastraCachorro(FILE **AP2);
 void AtualizaInfoIndice(char status, FILE **arq);
 int ExisteCachorro(int codigo, FILE **AP2);
@@ -174,5 +175,44 @@ int ExisteCachorro(int codigo, FILE **AP2)
 		i++;		
 	}
     return 0;	
+}
+
+void CadastraVacina(FILE **AP1, FILE **AP2)
+{
+    int cod_controle, cod_cachorro, tam_reg;
+    char verificador = '*', vacina[30], data[6], respo[100], registro[255];
+    
+    system("CLS");
+    printf("\n\nDigite o código do cachorro <-1 para cadastrar um cachorro>: ");
+    scanf("%d", &cod_cachorro);
+    if (cod_cachorro == -1)
+      CadastraCachorro(AP2);
+    else
+    {
+        while (!ExisteCachorro(cod_cachorro, AP2))
+        {   
+            printf("\n\nCachorro inexistente. Digite novamente!");
+            system("CLS");  
+            printf("\n\nDigite o código do cachorro <-1 para cadastrar um cachorro>: ");
+            scanf("%d", &cod_cachorro);
+            if (cod_cachorro == -1)
+              CadastraCachorro(AP2);    
+        }
+        system("CLS");
+        //cod_controle = pegar do INDEX1 ordenado;
+        printf("Codigo do cachorro: %d", cod_cachorro);
+        printf("\nNome da vacina: ");
+        gets(vacina);
+        printf("\nData de vacinacao <MM/AA>: ");
+        gets(data);
+        printf("\nResponsavel pela aplicacao: ");
+        gets(respo);
+        sprintf(registro, "%d|%d|%s|%s|%s|", cod_controle, cod_cachorro, vacina, data, respo);
+        tam_reg = strlen(registro);
+        //verificar espaços em branco no arquivo para inserção;
+        fwrite(&tam_reg, sizeof(int), 1, *AP1);
+        fwrite(&verificador, sizeof(char), 1, *AP1);
+        fwrite(registro, sizeof(char), tam_reg, *AP1);
+    }
 }
 
