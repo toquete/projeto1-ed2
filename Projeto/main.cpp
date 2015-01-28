@@ -27,6 +27,7 @@ void CadastraVacina(FILE **AP1, FILE **AP2);
 void CadastraCachorro(FILE **AP2);
 void AtualizaInfoIndice(char status, FILE **arq);
 int ExisteCachorro(int codigo, FILE **AP2);
+int ProcuraEspacoVazio(FILE **AP1, int tam_reg);
 
 int main() 
 {
@@ -39,7 +40,7 @@ int main()
 	{
 	    switch(opcao)
 	    {
-	        case 1: CadastraCachorro(&AP2);
+	        case 1: CadastraVacina(&AP1, &AP2);
         }
         opcao = Menu();
     }
@@ -59,7 +60,7 @@ int Menu()
 	while ((opcao != 1) && (opcao != 0))
 	{
 		system("CLS");
-        printf("\n1 - Cadastra Cachorro");
+        printf("\n1 - Cadastra Vacina");
 		printf("\n0 - Sair");
 		printf("\n\nEscolha a opcao: ");
         scanf("%d", &opcao);
@@ -161,7 +162,7 @@ RETORNOS: 0 - Não existe um cachorro com o código passado por parâmetro
 */
 int ExisteCachorro(int codigo, FILE **AP2)
 {
-	int i = 0;
+	int i = 1;
 	registro reg;
 	
 	rewind(*AP2);
@@ -177,9 +178,14 @@ int ExisteCachorro(int codigo, FILE **AP2)
     return 0;	
 }
 
+/*
+DESCRIÇÃO: Realiza o cadastro de vacinas
+PARÂMETROS: AP1 - Arquivo principal 1
+            AP2 - Arquivo principal 2
+*/
 void CadastraVacina(FILE **AP1, FILE **AP2)
 {
-    int cod_controle, cod_cachorro, tam_reg;
+    int cod_controle, cod_cachorro, tam_reg, posicao;
     char verificador = '*', vacina[30], data[6], respo[100], registro[255];
     
     system("CLS");
@@ -199,8 +205,9 @@ void CadastraVacina(FILE **AP1, FILE **AP2)
               CadastraCachorro(AP2);    
         }
         system("CLS");
-        //cod_controle = pegar do INDEX1 ordenado;
+        cod_controle = 1;//cod_controle = pegar do INDEX1 ordenado;
         printf("Codigo do cachorro: %d", cod_cachorro);
+        fflush(stdin);
         printf("\nNome da vacina: ");
         gets(vacina);
         printf("\nData de vacinacao <MM/AA>: ");
@@ -209,10 +216,58 @@ void CadastraVacina(FILE **AP1, FILE **AP2)
         gets(respo);
         sprintf(registro, "%d|%d|%s|%s|%s|", cod_controle, cod_cachorro, vacina, data, respo);
         tam_reg = strlen(registro);
-        //verificar espaços em branco no arquivo para inserção;
+        posicao = ProcuraEspacoVazio(AP1, tam_reg);
+        if (posicao != -1)
+          fseek(*AP1, posicao, SEEK_SET);
+        else
+          fseek(*AP1, 0, SEEK_END);
         fwrite(&tam_reg, sizeof(int), 1, *AP1);
         fwrite(&verificador, sizeof(char), 1, *AP1);
         fwrite(registro, sizeof(char), tam_reg, *AP1);
+    }
+}
+
+/*
+DESCRIÇÃO: Retorna o espaço vazio encontrado no arquivo
+PARÂMETROS: AP1 - Arquivo principal 1
+            tam_reg - tamanho do registro a ser inserido
+RETORNO: posição livre para ser escrita
+*/
+int ProcuraEspacoVazio(FILE **AP1, int tam_reg)
+{
+    int offset, tam, pos;
+    char ch;
+    
+    rewind(*AP1);
+    fread(&offset, sizeof(int), 1, *AP1);
+    if (offset == -1)
+        return -1;
+    else
+    {
+        fseek(*AP1, offset, SEEK_SET);
+        pos = ftell(*AP1);
+        while (fread(&tam, sizeof(int), 1, *AP1))
+        {
+            if (tam == -1)
+            {
+                return -1;
+                break;
+            }
+            else
+            {
+                ch = fgetc(*AP1);
+                if ((tam > tam_reg) && (ch == '!'))
+                {
+                   return pos;
+                   break;                 
+                }
+                else
+                {
+                    fread(&offset, sizeof(int), 1, *AP1);
+                    fseek(*AP1, offset, SEEK_SET);
+                }   
+            }     
+        }   
     }
 }
 
