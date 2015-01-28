@@ -2,8 +2,8 @@
 #include <conio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <iostream>
 
+//Criação da estrutura para AP2
 typedef struct
 {
 	int codigo;
@@ -36,35 +36,38 @@ int main()
 	
 	AbreArquivos(&AP1, &AP2, &IndPrim, &IndSec1, &IndSec2);
 	opcao = Menu();
-	while (opcao != 0)
+	while (1)
 	{
 	    switch(opcao)
 	    {
-	        case 1: CadastraVacina(&AP1, &AP2);
+	        case 1: CadastraCachorro(&AP2); break;
+	        case 0: printf("\nSaindo do Programa..."); 
+        	        fclose(AP1);
+                    fclose(AP2);
+                    fclose(IndPrim);
+                    fclose(IndSec1);
+                    fclose(IndSec2);
+                    getch(); return 0;
+	        default: printf("\nOpcao invalida!"); getch(); break;
         }
         opcao = Menu();
     }
-	
-	fclose(AP1);
-	fclose(AP2);
-	fclose(IndPrim);
-	fclose(IndSec1);
-	fclose(IndSec2);
-	return 0;
 }
 
+/*
+DESCRIÇÃO: Exibe as opções do menu.
+RETORNO: O número da opção escolhida pelo usuário
+*/
 int Menu()
 {
-	int opcao = -1;
+	int opcao;
 	
-	while ((opcao != 1) && (opcao != 0))
-	{
-		system("CLS");
-        printf("\n1 - Cadastra Vacina");
-		printf("\n0 - Sair");
-		printf("\n\nEscolha a opcao: ");
-        scanf("%d", &opcao);
-    }
+	system("CLS");
+    printf("\n1 - Cadastra Cachorro");
+	printf("\n0 - Sair");
+	printf("\n\nEscolha a opcao: ");
+    scanf("%d", &opcao);
+	
 	return opcao;
 }
 
@@ -162,18 +165,16 @@ RETORNOS: 0 - Não existe um cachorro com o código passado por parâmetro
 */
 int ExisteCachorro(int codigo, FILE **AP2)
 {
-	int i = 1;
 	registro reg;
 	
 	rewind(*AP2);
-	while (fread(&reg, sizeof(registro)*i, 1, *AP2) >= 1)
+	while (fread(&reg, sizeof(registro), 1, *AP2))
 	{
 		if (reg.codigo == codigo)
 		{
 			return 1;
 			break;
-		}
-		i++;		
+		}	
 	}
     return 0;	
 }
