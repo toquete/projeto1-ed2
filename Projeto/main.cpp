@@ -28,6 +28,7 @@ void CadastraCachorro(FILE **AP2);
 void AtualizaInfoIndice(char status, FILE **arq);
 int ExisteCachorro(int codigo, FILE **AP2);
 int ProcuraEspacoVazio(FILE **AP1, int tam_reg);
+void AlteraCachorro(FILE **AP2);
 
 int main() 
 {
@@ -42,6 +43,8 @@ int main()
 	    {
 	        case 1: CadastraCachorro(&AP2); break;
 	        case 2: CadastraVacina(&AP1, &AP2); break;
+			case 3: AlteraCachorro(&AP2);
+                    break;
 	        case 0: printf("\nSaindo do Programa..."); 
         	        fclose(AP1); fclose(AP2); //fecha arquivos principais
                     fclose(IndPrim); fclose(IndSec1); fclose(IndSec2); //fecha índices
@@ -64,6 +67,7 @@ int Menu()
 	system("CLS");
     printf("\n 1 - Cadastra Cachorro");
     printf("\n 2 - Cadastra Vacina");
+	printf("\n3 - Altera Cachorro");
 	printf("\n 0 - Sair");
 	printf("\n\nEscolha a opcao: ");
     scanf("%d", &opcao);
@@ -82,13 +86,14 @@ PARÂMETROS: AP1 - Arquivo Principal 1
 */
 void AbreArquivos(FILE **AP1, FILE **AP2, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2)
 {
+    int header = -1;
     /*No primeiro caso, ele entra no if pois o arquivo ainda não existe 
     (Com o uso do r+b o arquivo tem que existir). 
     Aí então ele cria o arquivo com w+b*/
     if ((*AP1 = fopen("AP1.bin", "r+b")) == NULL) //se o arquivo não exisitr
     {
         *AP1 = fopen("AP1.bin", "w+b"); //cria um novo arquivo vazio (AP1)
-    	fprintf(*AP1, "%d", -1);
+    	fwrite(&header, sizeof(int), 1, *AP1);
     	*IndPrim = fopen("IndPrim.bin", "w+b");
     	AtualizaInfoIndice('!', IndPrim);
     	*IndSec1 = fopen("IndSec1.bin", "w+b");
@@ -220,7 +225,6 @@ void CadastraVacina(FILE **AP1, FILE **AP2)
         gets(vacina);
         printf("\n Data de vacinacao <MM/AA>: ");
         gets(data);
-        data[6] = '\0';
         printf("\n Responsavel pela aplicacao: ");
         gets(respo);
         
@@ -279,5 +283,73 @@ int ProcuraEspacoVazio(FILE **AP1, int tam_reg)
             }     
         }   
     }
+}
+
+/*
+DESCRIÇÃO: Altera dados de um cachorro
+PARÂMETRO: AP2 - arquivo principal 2
+*/
+void AlteraCachorro(FILE **AP2)
+{
+    int op, cod, i = 0;
+    char raca[30], nome[100];
+    registro reg;
+    
+    system("CLS");
+    printf("Digite o codigo do cachorro: ");
+    scanf("%d", &cod);
+    while (!ExisteCachorro(cod, AP2))
+    {
+        system("CLS");   
+        printf("\n\nCachorro inexistente. Digite novamente!");
+        getch();
+        system("CLS");
+        printf("\n\nDigite o codigo do cachorro: ");
+        scanf("%d", &cod);   
+    }
+    
+    rewind(*AP2);
+	while (fread(&reg, sizeof(reg), 1, *AP2))
+	{
+		if (reg.codigo == cod)
+		  break;
+		i++;
+	}
+	
+    system("CLS");
+    printf("Qual campo deseja alterar");
+    printf("\n\n1 - Raca");
+    printf("\n2 - Nome");
+    printf("\n\nEscolha a opcao: ");
+    scanf("%d", &op);
+    while ((op != 1) && (op != 2))
+    {
+       system("CLS");
+       printf("Opcao invalida. Digite novamente!");
+       getch();
+       system("CLS");
+       printf("Qual campo deseja alterar");
+       printf("\n\n1 - Raca");
+       printf("\n2 - Nome");
+       printf("\n\nEscolha a opcao: ");
+       scanf("%d", op); 
+    }
+    
+    fflush(stdin);
+    system("CLS");
+    switch(op)
+    {
+        case 1: printf("Digite a nova raca: ");
+                gets(raca);
+                strcpy(reg.raca, raca);
+                break;
+        case 2: printf("Digite o novo nome: ");
+                gets(nome);
+                strcpy(reg.nome, nome);
+                break;
+    }
+    
+    fseek(*AP2, sizeof(reg)*i, SEEK_SET);
+	fwrite(&reg, sizeof(reg), 1, *AP2);
 }
 
