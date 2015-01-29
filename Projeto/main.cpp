@@ -41,17 +41,16 @@ int main()
 	    switch(opcao)
 	    {
 	        case 1: CadastraCachorro(&AP2); break;
+	        case 2: CadastraVacina(&AP1, &AP2); break;
 	        case 0: printf("\nSaindo do Programa..."); 
-        	        fclose(AP1);
-                    fclose(AP2);
-                    fclose(IndPrim);
-                    fclose(IndSec1);
-                    fclose(IndSec2);
-                    getch(); return 0;
+        	        fclose(AP1); fclose(AP2); //fecha arquivos principais
+                    fclose(IndPrim); fclose(IndSec1); fclose(IndSec2); //fecha índices
+                    getch(); break;
 	        default: printf("\nOpcao invalida!"); getch(); break;
         }
         opcao = Menu();
     }
+    return 0;
 }
 
 /*
@@ -63,8 +62,9 @@ int Menu()
 	int opcao;
 	
 	system("CLS");
-    printf("\n1 - Cadastra Cachorro");
-	printf("\n0 - Sair");
+    printf("\n 1 - Cadastra Cachorro");
+    printf("\n 2 - Cadastra Vacina");
+	printf("\n 0 - Sair");
 	printf("\n\nEscolha a opcao: ");
     scanf("%d", &opcao);
 	
@@ -82,9 +82,12 @@ PARÂMETROS: AP1 - Arquivo Principal 1
 */
 void AbreArquivos(FILE **AP1, FILE **AP2, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2)
 {
-    if ((*AP1 = fopen("AP1.bin", "r+b")) == NULL)
+    /*No primeiro caso, ele entra no if pois o arquivo ainda não existe 
+    (Com o uso do r+b o arquivo tem que existir). 
+    Aí então ele cria o arquivo com w+b*/
+    if ((*AP1 = fopen("AP1.bin", "r+b")) == NULL) //se o arquivo não exisitr
     {
-    	*AP1 = fopen("AP1.bin", "w+b");
+        *AP1 = fopen("AP1.bin", "w+b"); //cria um novo arquivo vazio (AP1)
     	fprintf(*AP1, "%d", -1);
     	*IndPrim = fopen("IndPrim.bin", "w+b");
     	AtualizaInfoIndice('!', IndPrim);
@@ -108,9 +111,8 @@ void AbreArquivos(FILE **AP1, FILE **AP2, FILE **IndPrim, FILE **IndSec1, FILE *
     	CarregaIndice(IndSec2, 1);
 	}*/
     	
-    if ((*AP2 = fopen("AP2.bin", "r+b")) == NULL)
-        *AP2 = fopen("AP2.bin", "w+b");
-    
+    if ((*AP2 = fopen("AP2.bin", "r+b")) == NULL) //se o arquivo não existir
+        *AP2 = fopen("AP2.bin", "w+b"); //cria um novo arquivo vazio (AP2)
 }
 
 /*
@@ -128,10 +130,9 @@ void CadastraCachorro(FILE **AP2)
 	{
 		system("CLS");
 		printf("\nCodigo ja cadastrado. Digite novamente!");
-		getch();
-		system("CLS");
+		getch(); system("CLS");
 		printf("\nCodigo: ");
-		scanf("%d", &reg.codigo);
+        scanf("%d", &reg.codigo);
 	}
 	fflush(stdin);
 	printf("Raca: ");
@@ -186,11 +187,11 @@ PARÂMETROS: AP1 - Arquivo principal 1
 */
 void CadastraVacina(FILE **AP1, FILE **AP2)
 {
-    int cod_controle, cod_cachorro, tam_reg, posicao;
+    int cod_controle = 0, cod_cachorro, tam_reg, posicao, aux = 0;
     char verificador = '*', vacina[30], data[6], respo[100], registro[255];
     
     system("CLS");
-    printf("\n\nDigite o código do cachorro <-1 para cadastrar um cachorro>: ");
+    printf("\n Digite o codigo do cachorro <-1 para cadastrar um cachorro>: ");
     scanf("%d", &cod_cachorro);
     if (cod_cachorro == -1)
       CadastraCachorro(AP2);
@@ -198,23 +199,31 @@ void CadastraVacina(FILE **AP1, FILE **AP2)
     {
         while (!ExisteCachorro(cod_cachorro, AP2))
         {   
-            printf("\n\nCachorro inexistente. Digite novamente!");
-            system("CLS");  
-            printf("\n\nDigite o código do cachorro <-1 para cadastrar um cachorro>: ");
+            if (!aux)
+                printf("\n Cachorro inexistente. Digite novamente!");
+            else
+                printf("\n Nova busca..." );
+            getch(); system("CLS");  
+            printf("\n Digite o codigo do cachorro <-1 para cadastrar um cachorro>: ");
             scanf("%d", &cod_cachorro);
             if (cod_cachorro == -1)
-              CadastraCachorro(AP2);    
+            {
+                CadastraCachorro(AP2);
+                aux = 1;
+            }
         }
         system("CLS");
-        cod_controle = 1;//cod_controle = pegar do INDEX1 ordenado;
-        printf("Codigo do cachorro: %d", cod_cachorro);
+        cod_controle++;//cod_controle = pegar do INDEX1 ordenado;
+        printf("\n Codigo do cachorro: %d", cod_cachorro);
         fflush(stdin);
-        printf("\nNome da vacina: ");
+        printf("\n\n Nome da vacina: ");
         gets(vacina);
-        printf("\nData de vacinacao <MM/AA>: ");
+        printf("\n Data de vacinacao <MM/AA>: ");
         gets(data);
-        printf("\nResponsavel pela aplicacao: ");
+        data[6] = '\0';
+        printf("\n Responsavel pela aplicacao: ");
         gets(respo);
+        
         sprintf(registro, "%d|%d|%s|%s|%s|", cod_controle, cod_cachorro, vacina, data, respo);
         tam_reg = strlen(registro);
         posicao = ProcuraEspacoVazio(AP1, tam_reg);
