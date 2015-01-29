@@ -76,7 +76,7 @@ int Menu()
 }
 
 /*
-DESCRIÇÃO: Verifica se os arquivos já foram criados.
+DESCRIÇÃO: Verifica  os arquivos já foram criados.
            Se não, cria-os.
 PARÂMETROS: AP1 - Arquivo Principal 1
             AP2 - Arquivo Principal 2
