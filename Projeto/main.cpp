@@ -21,6 +21,11 @@ typedef struct
 	int offset;
 } indice2;
 
+indice1 INDEX1[50];
+indice2 INDEX2[50];
+indice1 INDEX3[50];
+int tam1 = 0, tam2 = 0, tam3 = 0; 
+
 int Menu();
 void AbreArquivos(FILE **AP1, FILE **AP2, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2);
 void CadastraVacina(FILE **AP1, FILE **AP2);
@@ -29,6 +34,13 @@ void AtualizaInfoIndice(char status, FILE **arq);
 int ExisteCachorro(int codigo, FILE **AP2);
 int ProcuraEspacoVazio(FILE **AP1, int tam_reg);
 void AlteraCachorro(FILE **AP2);
+int ExigeRecriaIndice(FILE **arq);
+void RecriaIndicePrim(FILE **AP1);
+void QuickSortInd1(indice1 aux[], int left, int right);
+int ParticionarQSInd1(indice1 aux[], int left, int right, int pivo);
+void TrocaQSInd1(indice1 aux[], int i, int j);
+void CarregaIndice(FILE **arq, int tipo);
+//void EscreveIndices(FILE **IndPrim, FILE **IndSec1, FILE **IndSec2);
 
 int main() 
 {
@@ -48,7 +60,9 @@ int main()
 	        case 0: printf("\nSaindo do Programa..."); 
         	        fclose(AP1); fclose(AP2); //fecha arquivos principais
                     fclose(IndPrim); fclose(IndSec1); fclose(IndSec2); //fecha índices
-                    getch(); break;
+                    getch(); 
+                    return 0; 
+                    break;
 	        default: printf("\nOpcao invalida!"); getch(); break;
         }
         opcao = Menu();
@@ -67,7 +81,7 @@ int Menu()
 	system("CLS");
     printf("\n 1 - Cadastra Cachorro");
     printf("\n 2 - Cadastra Vacina");
-	printf("\n3 - Altera Cachorro");
+	printf("\n 3 - Altera Cachorro");
 	printf("\n 0 - Sair");
 	printf("\n\nEscolha a opcao: ");
     scanf("%d", &opcao);
@@ -101,20 +115,23 @@ void AbreArquivos(FILE **AP1, FILE **AP2, FILE **IndPrim, FILE **IndSec1, FILE *
     	*IndSec2 = fopen("IndSec2.bin", "w+b");
     	AtualizaInfoIndice('!', IndSec2);
 	}
-	/*else if (ExigeRecriaIndice(IndPrim))
-	{
-		RecriaIndicePrim(AP1);
-		QuickSortInd1(INDEX1, 0, tam1);
+	else 
+	{  
+	    *IndPrim = fopen("IndPrim.bin", "r+b");
+    	*IndSec1 = fopen("IndSec1.bin", "r+b");
+    	*IndSec2 = fopen("IndSec2.bin", "r+b");
+    	if (ExigeRecriaIndice(IndPrim))
+    	{
+    	   RecriaIndicePrim(AP1);
+		   QuickSortInd1(INDEX1, 0, tam1);   
+        }
+        else
+        {
+           CarregaIndice(IndPrim, 1);
+    	   CarregaIndice(IndSec1, 2);
+    	   CarregaIndice(IndSec2, 1);  
+        }
 	}
-	else
-	{
-		IndPrim = fopen("IndPrim.bin", "r+b");
-		CarregaIndice(IndPrim, 1);
-    	IndSec1 = fopen("IndSec1.bin", "r+b");
-    	CarregaIndice(IndSec1, 2);
-    	IndSec2 = fopen("IndSec2.bin", "r+b");
-    	CarregaIndice(IndSec2, 1);
-	}*/
     	
     if ((*AP2 = fopen("AP2.bin", "r+b")) == NULL) //se o arquivo não existir
         *AP2 = fopen("AP2.bin", "w+b"); //cria um novo arquivo vazio (AP2)
@@ -192,7 +209,7 @@ PARÂMETROS: AP1 - Arquivo principal 1
 */
 void CadastraVacina(FILE **AP1, FILE **AP2)
 {
-    int cod_controle = 0, cod_cachorro, tam_reg, posicao, aux = 0;
+    int cod_controle, cod_cachorro, tam_reg, posicao, aux = 0;
     char verificador = '*', vacina[30], data[6], respo[100], registro[255];
     
     system("CLS");
@@ -218,8 +235,12 @@ void CadastraVacina(FILE **AP1, FILE **AP2)
             }
         }
         system("CLS");
-        cod_controle++;//cod_controle = pegar do INDEX1 ordenado;
-        printf("\n Codigo do cachorro: %d", cod_cachorro);
+        if (tam1 == 0)
+          cod_controle = 1;
+        else
+          cod_controle = INDEX1[tam1 - 1].codigo + 1; //pegar do INDEX1 ordenado;
+        printf(" Codigo de Controle: %d", cod_controle);
+        printf("\n\n Codigo do cachorro: %d", cod_cachorro);
         fflush(stdin);
         printf("\n\n Nome da vacina: ");
         gets(vacina);
@@ -237,6 +258,10 @@ void CadastraVacina(FILE **AP1, FILE **AP2)
           fseek(*AP1, 0, SEEK_END);
         fwrite(&tam_reg, sizeof(int), 1, *AP1);
         fwrite(&verificador, sizeof(char), 1, *AP1);
+        INDEX1[tam1].codigo = cod_controle;
+        INDEX1[tam1].offset = ftell(*AP1);
+        QuickSortInd1(INDEX1, 0, tam1);
+        tam1++;
         fwrite(registro, sizeof(char), tam_reg, *AP1);
     }
 }
@@ -351,5 +376,124 @@ void AlteraCachorro(FILE **AP2)
     
     fseek(*AP2, sizeof(reg)*i, SEEK_SET);
 	fwrite(&reg, sizeof(reg), 1, *AP2);
+}
+
+/*
+DESCRIÇÃO: Verifica se é necessário recriar um índice a partir de um arquivo
+PARÂMETRO: ind - Índice a ser verificado
+RETORNOS: 0 - Não é necessário recriar o índice
+          1 - É necessário recriar o índice
+*/
+int ExigeRecriaIndice(FILE **arq)
+{
+	char ch;
+	
+	rewind(*arq);
+	ch = fgetc(*arq);
+	if (ch == '!')
+	  return 1;
+	else
+	  return 0;
+}
+
+/*
+DESCRIÇÃO: Recria o índice primário a partir do arquivo e carrega em memória principal
+PARÂMETRO: AP1 - Arquivo Principal 1
+*/
+void RecriaIndicePrim(FILE **AP1)
+{
+	int deslocamento, aux;
+	char ch;
+	
+	fseek(*AP1, sizeof(int), SEEK_SET); //header
+	aux = ftell(*AP1);
+	ch = fgetc(*AP1);
+	if (ch == EOF)
+		return;
+	else
+	{
+		fseek(*AP1, 2*sizeof(int), SEEK_SET); //primeiro registro
+		ch = fgetc(*AP1);
+		while (ch != EOF)
+		{
+			if (ch != '!')
+			{
+				INDEX1[tam1].offset = ftell(*AP1);
+				fseek(*AP1, INDEX1[tam1].offset, SEEK_SET);
+				fscanf(*AP1, "%d", INDEX1[tam1].codigo);
+				tam1++;
+			}
+			fseek(*AP1, 0, aux);
+			fread(&deslocamento, sizeof(int), 1, *AP1);
+			//fscanf(*AP1, "%d", deslocamento);
+			aux += deslocamento;
+			fseek(*AP1, sizeof(int), aux);
+			ch = fgetc(*AP1);
+		}	
+	}
+}
+
+//QuickSort
+void TrocaQSInd1(indice1 aux[], int i, int j) 
+{
+    indice1 t = aux[i];
+    aux[i] = aux[j];
+    aux[j] = t;
+}
+ 
+int ParticionarQSInd1(indice1 aux[], int left,int right,int pivo)
+{
+    int pos, i;
+    TrocaQSInd1(aux, pivo, right);
+    pos = left;
+    for(i = left; i < right; i++)
+    {
+        if (aux[i].codigo < aux[right].codigo)
+        {
+            TrocaQSInd1(aux, i, pos);
+            pos++;
+        }
+    }
+    TrocaQSInd1(aux, right, pos);
+    return pos;
+}
+ 
+void QuickSortInd1(indice1 aux[], int left, int right)
+{
+	int pivo, pos;
+	
+    if (left < right)
+    {
+        pivo = (left + right) / 2;
+        pos = ParticionarQSInd1(aux,left,right,pivo);
+        QuickSortInd1(aux, left, pos - 1);
+        QuickSortInd1(aux, pos + 1, right);
+    }
+}
+
+void CarregaIndice(FILE **arq, int tipo)
+{
+	indice1 ind1;
+	indice2 ind2;
+	
+	if (tipo != 2)
+	{
+		rewind(*arq);
+		while (fgetc(*arq) != EOF)
+		{
+			fread(&ind1, sizeof(indice1), 1, *arq);
+			if (tipo == 1)
+			{
+				INDEX1[tam1] = ind1;
+				tam1++;	
+			}
+			else
+			{
+				INDEX3[tam3] = ind1;
+				tam3++;
+			}
+			
+		}
+	}
 }
 
