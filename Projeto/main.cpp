@@ -238,7 +238,10 @@ int PerguntaCodigo(FILE **AP2)
     printf("\n Digite o codigo do cachorro <-1 para cadastrar um cachorro>: ");
     scanf("%d", &cod);
     if(cod == -1)
+    {   
+        CadastraCachorro(AP2);
         aux = 1;
+    }
     while (!ExisteCachorro(cod, AP2))
     {
         if (!aux)
