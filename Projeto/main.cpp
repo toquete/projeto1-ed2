@@ -98,8 +98,10 @@ RETORNO: O número da opção escolhida pelo usuário
 int Menu()
 {
 	int opcao;
-	
-	system("CLS");
+	system("CLS");        
+    printf("***********************************\n");
+    printf("*               MENU              *\n");
+    printf("***********************************\n");
     printf("\n 1 - Cadastra Cachorro");
     printf("\n 2 - Cadastra Vacina");
 	printf("\n 3 - Altera Cachorro");
@@ -235,6 +237,8 @@ int PerguntaCodigo(FILE **AP2)
     system("CLS");
     printf("\n Digite o codigo do cachorro <-1 para cadastrar um cachorro>: ");
     scanf("%d", &cod);
+    if(cod == -1)
+        aux = 1;
     while (!ExisteCachorro(cod, AP2))
     {
         if (!aux)
@@ -364,8 +368,9 @@ PARÂMETROS: AP1 - Arquivo Principal 1
 */
 void AlteraDados(FILE **AP1, FILE **AP2)
 {
-    char *vacina, *data, *respo, opcao;
-    int cod, cod_ca, pos, pos_cc, tam, tam_campo; //pos_cc = posição do código de controle
+    char *vacina, *Nvacina, *data, *Ndata, *respo, *Nrespo, opcao;
+    int cod, cod_ca, pos, tam, tam_campo, TamNovoReg;
+    int pos_cc, pos_vacina, pos_data, pos_respo;
     
     system("CLS");
     rewind(*AP1);
@@ -386,31 +391,47 @@ void AlteraDados(FILE **AP1, FILE **AP2)
     switch (opcao)
     {
         // case 'a'
-        fseek(*AP1, sizeof(int), SEEK_CUR);
-        fseek(*AP1, sizeof(char), SEEK_CUR);
-        fseek(*AP1, sizeof(int), SEEK_CUR);
-        fseek(*AP1, sizeof(char), SEEK_CUR);
+        fread(&tam, sizeof(int), 1, *AP1);
+        fseek(*AP1, sizeof(char)*2 + sizeof(int), SEEK_CUR);
         pos_cc = ftell(*AP1);
         fread(&cod_ca, sizeof(int), 1, *AP1);
-        fseek(*AP1, sizeof(char), SEEK_CUR);
+        
         //case 'b'
+        fseek(*AP1, sizeof(char), SEEK_CUR);
+        pos_vacina = ftell(*AP1);
         PegaCampo(AP1, vacina);
+        
         //case 'c'
+        pos_data = ftell(*AP1);
         PegaCampo(AP1, data);
+        
         //case 'd'
+        pos_respo = ftell(*AP1);
         PegaCampo(AP1, respo);
-        case 'a':   //VERIFICAR SE ALTEROU
+        
+        case 'a': 
                     fflush(stdin);
                     printf("\n\n Digite o novo codigo do cachorro: ");
                     scanf("%d", &cod);
                     fseek(*AP1, 0, pos_cc);
-                    fwrite(&cod, sizeof(int), 1, *AP1); //???
+                    fwrite(&cod, sizeof(int), 1, *AP1);
                     printf("\n Alterado com sucesso!");
                     getch();
                     break;
         case 'b':   
+                    printf("\n\n Digite o novo nome da vacina: ");
+                    gets(Nvacina);
+                    fflush(stdin);
+                    if(strlen(Nvacina) <= strlen(vacina))
+                        fwrite(Nvacina, 1, strlen(Nvacina), *AP1);
+                    else
+                    {   //remove e insere um novo
+                        TamNovoReg = tam - strlen(vacina) + strlen(Nvacina);
+                        //passa por parâmetro o tamanho do novo registro para a hora da inserção no final
+                        fseek(*AP1, 0, pos);
+                    }
                     tam_campo = strlen(vacina);
-                  break;
+                    break;
         case 'c': tam_campo = strlen(data);
                   break;
         case 'd': tam_campo = strlen(respo);
@@ -446,23 +467,13 @@ PARÂMETRO: AP2 - arquivo principal 2
 */
 void AlteraCachorro(FILE **AP2)
 {
-    int op, cod, i = 0;
+    int op, cod, i = 0, aux = 0;
     char raca[30], nome[100];
     registro reg;
     
     system("CLS");
-    printf("Digite o codigo do cachorro: ");
-    scanf("%d", &cod);
-    while (!ExisteCachorro(cod, AP2))
-    {
-        system("CLS");   
-        printf("\n\nCachorro inexistente. Digite novamente!");
-        getch();
-        system("CLS");
-        printf("\n\nDigite o codigo do cachorro: ");
-        scanf("%d", &cod);   
-    }
-    
+    cod = PerguntaCodigo(AP2);
+
     rewind(*AP2);
 	while (fread(&reg, sizeof(reg), 1, *AP2))
 	{
