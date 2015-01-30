@@ -364,53 +364,52 @@ PARÂMETROS: AP1 - Arquivo Principal 1
 */
 void AlteraDados(FILE **AP1, FILE **AP2)
 {
-    int header, tam_reg, tam_campo, x, achou = 0, opcao, cont = 0, pos, cod, i;
-    char *cod_ca, *vacina, *data, *respo;
+    char *vacina, *data, *respo, opcao;
+    int cod, cod_ca, pos, pos_cc, tam, tam_campo; //pos_cc = posição do código de controle
     
+    system("CLS");
     rewind(*AP1);
-    fread(&header, sizeof(int), 1, *AP1); //Leu o header e colocou em 'header'
-    pos = ftell(*AP1); //guarda a posição do início do registro
-    fread(&tam_reg, sizeof(int), 1, *AP1); //Leu o tamanho do registro e colocou em 'tam_reg'
-    fseek(*AP1, sizeof(char), SEEK_CUR); //deu um fseek para pular o indicador de registro ativo ou inativo
-    while(fread(&x, sizeof(int), 1, *AP1))
+    printf("Codigo da vacina a ser alterada: ");
+    scanf("%d", &cod);
+    pos = RetornaPosicao(cod);
+    if (pos == -1)
     {
-        if (x == cod)
-        {   
-            achou = 1;
-            break;
-        }
-        fseek(*AP1, tam_reg-1, SEEK_CUR);
-        fread(&tam_reg, sizeof(int), 1, *AP1);
-        fseek(*AP1, sizeof(char), SEEK_CUR); //deu um fseek para pular o indicador de registro ativo ou inativo
-    }
-    fseek(*AP1, sizeof(char), SEEK_CUR); //deu um fseek para pular o indicador de registro ativo ou inativo
-    
-    if(!achou)
-    {
-        printf("Codigo da vacina nao encontrado!");
+        printf("\n Codigo da vacina nao encontrado!");
         getch();
         system("cls");
         return;
     }
+    rewind(*AP1);
+    fseek(*AP1, 0, pos);
     
-    system("CLS");
-    opcao = PerguntaOpcao(); //pergunta qual campo vai alterar
-    opcao = tolower(opcao);
-    
+    opcao = PerguntaOpcao();
     switch (opcao)
     {
-        PegaCampo(AP1, cod_ca); //a
-        PegaCampo(AP1, vacina); //b
-        PegaCampo(AP1, data); //c
-        PegaCampo(AP1, respo); //d
-        case 'a':   int Ncod_ca, Ccod_ca; // N para 'novo' e C para 'conversão'
-                    Ccod_ca = atoi(cod_ca);
+        // case 'a'
+        fseek(*AP1, sizeof(int), SEEK_CUR);
+        fseek(*AP1, sizeof(char), SEEK_CUR);
+        fseek(*AP1, sizeof(int), SEEK_CUR);
+        fseek(*AP1, sizeof(char), SEEK_CUR);
+        pos_cc = ftell(*AP1);
+        fread(&cod_ca, sizeof(int), 1, *AP1);
+        fseek(*AP1, sizeof(char), SEEK_CUR);
+        //case 'b'
+        PegaCampo(AP1, vacina);
+        //case 'c'
+        PegaCampo(AP1, data);
+        //case 'd'
+        PegaCampo(AP1, respo);
+        case 'a':   //VERIFICAR SE ALTEROU
                     fflush(stdin);
-                    printf("Digite o novo codigo do cachorro: ");
-                    scanf("%d", &Ncod_ca);
-                    fseek(*AP1, 0, pos);
+                    printf("\n\n Digite o novo codigo do cachorro: ");
+                    scanf("%d", &cod);
+                    fseek(*AP1, 0, pos_cc);
+                    fwrite(&cod, sizeof(int), 1, *AP1); //???
+                    printf("\n Alterado com sucesso!");
+                    getch();
                     break;
-        case 'b': tam_campo = strlen(vacina);
+        case 'b':   
+                    tam_campo = strlen(vacina);
                   break;
         case 'c': tam_campo = strlen(data);
                   break;
@@ -421,30 +420,6 @@ void AlteraDados(FILE **AP1, FILE **AP2)
                  PerguntaOpcao(); break;
     }    
     
-    while(1) //Lógica para parar AP1 na posição do registro a ser alterado
-    {
-        PegaCampo(AP1, cod_ca);
-        PegaCampo(AP1, vacina);
-        PegaCampo(AP1, data);
-        PegaCampo(AP1, respo);
-        i++;
-        
-        //zerando as variáveis para uso posterior
-        cod_ca[0] = '\0';
-        vacina[0] = '\0';
-        data[0] = '\0';
-        respo[0] = '\0';
-    }
-    
-    switch (opcao)
-    {
-        case 'a': break;
-        case 'b': break;
-        case 'c': break;
-        default: system("CLS");
-                 printf("\n Opcao Ivalida! Digite novamente...\n"); 
-                 PerguntaOpcao(); break;
-    }    
 }
 
 void PegaCampo(FILE **AP1, char *campo)
@@ -696,5 +671,5 @@ int RetornaPosicao(int codigo)
     for(int i = 0; i< tam1; i++)
       if(codigo == INDEX1[i].codigo)
         return INDEX1[i].offset;
-    
+    return -1;
 }
