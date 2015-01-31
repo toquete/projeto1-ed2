@@ -37,7 +37,7 @@ int ExisteCachorro(int codigo, FILE **AP2);
 int ProcuraEspacoVazio(FILE **AP1, int tam_reg);
 char PerguntaOpcao();
 void AlteraDados(FILE **AP1, FILE **AP2);
-void PegaCampo(FILE **AP2, char *campo);
+void PegaCampo(FILE **AP2, char *campo, int pos);
 void AlteraCachorro(FILE **AP2);
 int ExigeRecriaIndice(FILE **arq);
 void RecriaIndicePrim(FILE **AP1);
@@ -281,12 +281,12 @@ void CadastraVacina(FILE **AP1, FILE **AP2, FILE **IndPrim)
     fflush(stdin);
     printf("\n Codigo do cachorro: %d", cod_cachorro);
     fflush(stdin);
-    printf("\n Nome da vacina: ");
+    printf("\n\n Nome da vacina: ");
     gets(vacina);
-    printf("\n Data de vacinacao <MM/AA>: ");
+    printf(" Data de vacinacao <MM/AA>: ");
     gets(data);
     //data[6] = '\0';
-    printf("\n Responsavel pela aplicacao: ");
+    printf(" Responsavel pela aplicacao: ");
     gets(respo);
     
     sprintf(registro, "%d|%d|%s|%s|%s|", cod_controle, cod_cachorro, vacina, data, respo);
@@ -348,7 +348,7 @@ char PerguntaOpcao()
     printf("\n b - Nome da Vacina");
     printf("\n c - Data da Vacinacao");
     printf("\n d - Responsavel Pela Aplicacao");
-    printf("\n\n  Digite o campo a ser alterado: ");
+    printf("\n\n Digite o campo a ser alterado: ");
     return getche();
 }
 
@@ -359,9 +359,13 @@ PARÂMETROS: AP1 - Arquivo Principal 1
 */
 void AlteraDados(FILE **AP1, FILE **AP2)
 {
-    char *vacina, *Nvacina, *data, *Ndata, *respo, *Nrespo, opcao;
-    int cod, cod_ca, pos, tam, TamNovoReg;
-    int pos_cc, pos_vacina, pos_data, pos_respo;
+    char opcao, *tam, *CodCo, *CodCa, *vacina, *data, *respo;
+    //tam = tamanho do registro
+    //CodCo = codigo de controle
+    //CodCa = codigo do cachorro
+    char *NCodCa, *Nvacina, *Ndata, *Nrespo; //N indica um novo valor
+    int cod, pos, PosCodCo, PosCodCa, PosVacina, PosData, PosRespo, TamNovoReg;
+    //pos = posição do início do arquivo
     
     system("CLS");
     rewind(*AP1);
@@ -381,95 +385,120 @@ void AlteraDados(FILE **AP1, FILE **AP2)
     opcao = PerguntaOpcao();
     switch (opcao)
     {
-        // case 'a'
+        fflush(stdin);
+        //PegaCampo(AP1, tam, PosCodCo); //pega o tamanho do registro e sua posição 
         fread(&tam, sizeof(int), 1, *AP1);
-        fseek(*AP1, sizeof(char)*2 + sizeof(int), SEEK_CUR);
-        pos_cc = ftell(*AP1);
-        fread(&cod_ca, sizeof(int), 1, *AP1);
-        
-        //case 'b'
-        fseek(*AP1, sizeof(char), SEEK_CUR);
-        pos_vacina = ftell(*AP1);
-        PegaCampo(AP1, vacina);
-        
-        //case 'c'
-        pos_data = ftell(*AP1);
-        PegaCampo(AP1, data);
-        
-        //case 'd'
-        pos_respo = ftell(*AP1);
-        PegaCampo(AP1, respo);
+        //fseek(*AP1, sizeof(char), SEEK_CUR);
+        PegaCampo(AP1, CodCo, PosCodCo);
+        printf("EXIBE: %s %d", CodCo, PosCodCo);
+        PegaCampo(AP1, CodCa, PosCodCa);
+        PegaCampo(AP1, vacina, PosVacina);
+        PegaCampo(AP1, data, PosData);
+        PegaCampo(AP1, respo, PosRespo);
         
         case 'a': 
                     fflush(stdin);
+                    printf("\n\n Codigo do cachorro: %s", CodCa);
                     printf("\n\n Digite o novo codigo do cachorro: ");
-                    scanf("%d", &cod);
-                    fseek(*AP1, 0, pos_cc);
-                    fwrite(&cod, sizeof(int), 1, *AP1);
-                    printf("\n Alterado com sucesso!");
-                    getch();
+                    gets(NCodCa);
+                    if(strlen(NCodCa) == strlen(CodCa))
+                    {
+                        fseek(*AP1, 0, PosCodCa);
+                        fwrite(&cod, sizeof(char), strlen(NCodCa), *AP1);
+                        printf("\n Alterado com sucesso!");
+                        getch();
+                    }
+                    /*else if (strlen(NcodCa) < strlen(CodCa))
+                        //compactação o registro*/
+                    
+                    /*else //insere como um novo registro
+                        TamNovoReg = tam - strlen(CodCa) + strlen(NCodCa);*/
                     break;
         case 'b':   
+                    printf("\n\n Nome da vacina: %s", vacina);
                     printf("\n\n Digite o novo nome da vacina: ");
                     gets(Nvacina);
-                    fflush(stdin);
-                    if(strlen(Nvacina) <= strlen(vacina))
-                        fwrite(Nvacina, 1, strlen(Nvacina), *AP1);
-                    else
-                    {   //remove e insere um novo
-                        TamNovoReg = tam - strlen(vacina) + strlen(Nvacina);
-                        //passa por parâmetro o tamanho do novo registro para a hora da inserção no final
-                        fseek(*AP1, 0, pos);
+                    if(strlen(Nvacina) == strlen(vacina))
+                    {
+                        fseek(*AP1, 0, PosVacina);
+                        fwrite(&Nvacina, sizeof(char), strlen(Nvacina), *AP1);
+                        printf("\n Alterado com sucesso!");
+                        getch();
                     }
+                    /*else if (strlen(Nvacina) < strlen(vacina))
+                        //compactação o registro*/
+                    
+                    /*else //insere como um novo registro
+                        TamNovoReg = tam - strlen(vacina) + strlen(Nvacina);*/
                     break;
         case 'c':
+                    printf("\n\n Data (MM/AA): %s", data);
                     printf("\n\n Digite a nova data (MM/AA): ");
                     gets(Ndata);
-                    fflush(stdin);
-                    if(strlen(Ndata) <= strlen(data))
-                        fwrite(Nvacina, 1, strlen(Nvacina), *AP1);
-                    else
-                    {   //remove e insere um novo
-                        TamNovoReg = tam - strlen(data) + strlen(Ndata);
-                        //passa por parâmetro o tamanho do novo registro para a hora da inserção no final
-                        fseek(*AP1, 0, pos);
+                    if(strlen(Ndata) == strlen(data))
+                    {
+                        fseek(*AP1, 0, PosData);
+                        fwrite(&Ndata, sizeof(char), strlen(Ndata), *AP1);
+                        printf("\n Alterado com sucesso!");
+                        getch();
                     }
+                    /*else if (strlen(Ndata) < strlen(data))
+                        //compactação o registro*/
+                    
+                    /*else //insere como um novo registro
+                        TamNovoReg = tam - strlen(data) + strlen(Ndata);*/
                     break;
         case 'd': 
+                    printf("\n\n Responsavel pela aplicacao: %s", respo);
                     printf("\n\n Digite o nome do novo responsavel pela aplicacao: ");
                     gets(Nrespo);
-                    fflush(stdin);
-                    if(strlen(Nrespo) <= strlen(respo))
-                        fwrite(Nrespo, 1, strlen(Nrespo), *AP1);
-                    else
-                    {   //remove e insere um novo
-                        TamNovoReg = tam - strlen(respo) + strlen(Nrespo);
-                        //passa por parâmetro o tamanho do novo registro para a hora da inserção no final
-                        fseek(*AP1, 0, pos);
+                    if(strlen(Nrespo) == strlen(respo))
+                    {
+                        fseek(*AP1, 0, PosRespo);
+                        fwrite(&Nrespo, sizeof(char), strlen(Nrespo), *AP1);
+                        printf("\n Alterado com sucesso!");
+                        getch();
                     }
+                    /*else if (strlen(Nrespo) < strlen(respo))
+                        //compactação o registro*/
+                    
+                    /*else //insere como um novo registro
+                        TamNovoReg = tam - strlen(respo) + strlen(respo);*/
                     break;
         default: system("CLS");
                  printf("\n Opcao ivalida! Digite novamente...\n"); 
-                 PerguntaOpcao(); break;
+                 PerguntaOpcao();
+                 break;
     }    
     
 }
 
-void PegaCampo(FILE **AP1, char *campo)
+/*
+DESCRIÇÃO: Pega o campo em AP1
+PARÂMETROs: AP1 - arquivo principal 1
+            Campo de retorno
+            Posição inicial do campo
+*/
+void PegaCampo(FILE **AP1, char *campo, int pos)
 {
     char ch;
-    int i = 0;
+    int i = 0, cont = 0;
     campo[i] = '\0';
     
     while (fread(&ch,sizeof(char),1,*AP1))
     {
-       if (ch == '|')
-              break;
-       else
-           campo[i] = ch;
-       i++;
+        if (ch == '|' || ch == '*')
+            break;
+        else
+        {
+            cont++;
+            campo[i] = ch;
+        }
+        
+        if (cont == 1)
+            pos = ftell(*AP1);
+        i++;
     }
-    
     campo[i] = '\0';
 }
 
