@@ -372,7 +372,7 @@ PARÂMETROS: AP1 - Arquivo Principal 1
 void AlteraDados(FILE **AP1, FILE **AP2)
 {
     char *vacina, *Nvacina, *data, *Ndata, *respo, *Nrespo, opcao;
-    int cod, cod_ca, pos, tam, tam_campo, TamNovoReg;
+    int cod, cod_ca, pos, tam, TamNovoReg;
     int pos_cc, pos_vacina, pos_data, pos_respo;
     
     system("CLS");
@@ -433,12 +433,33 @@ void AlteraDados(FILE **AP1, FILE **AP2)
                         //passa por parâmetro o tamanho do novo registro para a hora da inserção no final
                         fseek(*AP1, 0, pos);
                     }
-                    tam_campo = strlen(vacina);
                     break;
-        case 'c': tam_campo = strlen(data);
-                  break;
-        case 'd': tam_campo = strlen(respo);
-                  break;
+        case 'c':
+                    printf("\n\n Digite a nova data (MM/AA): ");
+                    gets(Ndata);
+                    fflush(stdin);
+                    if(strlen(Ndata) <= strlen(data))
+                        fwrite(Nvacina, 1, strlen(Nvacina), *AP1);
+                    else
+                    {   //remove e insere um novo
+                        TamNovoReg = tam - strlen(data) + strlen(Ndata);
+                        //passa por parâmetro o tamanho do novo registro para a hora da inserção no final
+                        fseek(*AP1, 0, pos);
+                    }
+                    break;
+        case 'd': 
+                    printf("\n\n Digite o nome do novo responsavel pela aplicacao: ");
+                    gets(Nrespo);
+                    fflush(stdin);
+                    if(strlen(Nrespo) <= strlen(respo))
+                        fwrite(Nrespo, 1, strlen(Nrespo), *AP1);
+                    else
+                    {   //remove e insere um novo
+                        TamNovoReg = tam - strlen(respo) + strlen(Nrespo);
+                        //passa por parâmetro o tamanho do novo registro para a hora da inserção no final
+                        fseek(*AP1, 0, pos);
+                    }
+                    break;
         default: system("CLS");
                  printf("\n Opcao ivalida! Digite novamente...\n"); 
                  PerguntaOpcao(); break;
