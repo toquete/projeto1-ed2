@@ -281,12 +281,12 @@ void CadastraVacina(FILE **AP1, FILE **AP2, FILE **IndPrim)
     fflush(stdin);
     printf("\n Codigo do cachorro: %d", cod_cachorro);
     fflush(stdin);
-    printf("\n\n Nome da vacina: ");
+    printf("\n Nome da vacina: ");
     gets(vacina);
-    printf(" Data de vacinacao <MM/AA>: ");
+    printf("\n Data de vacinacao <MM/AA>: ");
     gets(data);
     //data[6] = '\0';
-    printf(" Responsavel pela aplicacao: ");
+    printf("\n Responsavel pela aplicacao: ");
     gets(respo);
     
     sprintf(registro, "%d|%d|%s|%s|%s|", cod_controle, cod_cachorro, vacina, data, respo);
@@ -327,25 +327,13 @@ int ProcuraEspacoVazio(FILE **AP1, int tam_reg)
         pos = ftell(*AP1);
         while (fread(&tam, sizeof(int), 1, *AP1))
         {
-            if (tam == -1)
-            {
-                return -1;
-                break;
-            }
-            else
-            {
-                ch = fgetc(*AP1);
-                if ((tam > tam_reg) && (ch == '!')) //se achou um registro vazio
-                {
-                   return pos;
-                   break;                 
-                }
-                else
-                {
-                    fread(&offset, sizeof(int), 1, *AP1);
-                    fseek(*AP1, offset, SEEK_SET);
-                }   
-            }     
+            if (tam > tam_reg)
+              return pos;
+            fseek(*AP1, sizeof(char), SEEK_CUR); //pula char verificador
+            fread(&offset, sizeof(int), 1, *AP1);
+            if (offset == -1)
+              return -1;
+            fseek(*AP1, offset, SEEK_SET);     
         }   
     }
 }
@@ -670,14 +658,22 @@ void MenuRemoveVacina(FILE **AP1)
     printf(" Digite o codigo da vacina a ser removida: ");
     scanf("%d", &cod_controle);
     pos = RetornaPosicao(cod_controle);
-    fseek(*AP1, pos, SEEK_SET);
     RemoveVacina(AP1, pos);
 }
 
 void RemoveVacina(FILE **AP1, int pos)
 {
+    int tam_reg, header;
+    char verificador = '!';
     
-    
+    rewind(*AP1);
+    fread(&header, sizeof(int), 1, *AP1);
+    fseek(*AP1, pos, SEEK_SET);
+    fread(&tam_reg, sizeof(int), 1, *AP1);
+    fwrite(&verificador, sizeof(char), 1, *AP1);
+    fwrite(&header, sizeof(int), 1, *AP1);
+    rewind(*AP1);
+    fwrite(&pos, sizeof(int), 1, *AP1);    
 }
 
 int RetornaPosicao(int codigo)
