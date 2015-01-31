@@ -46,9 +46,10 @@ int ParticionarQSInd1(indice1 aux[], int left, int right, int pivo);
 void TrocaQSInd1(indice1 aux[], int i, int j);
 void CarregaIndice(FILE **arq, int tipo);
 void GravaIndices(FILE **IndPrim, FILE **IndSec1, FILE **IndSec2);
-void RemoveVacina(FILE **AP1, int pos);
+void RemoveVacina(FILE **AP1, int pos, int cod_controle);
 int RetornaPosicao(int codigo);
 void MenuRemoveVacina(FILE **AP1);
+void PesquisaCodPrim(FILE **AP1, FILE **AP2, FILE **IndPrim);
 
 int main() 
 {
@@ -68,6 +69,11 @@ int main()
 			case 3: AlteraCachorro(&AP2);
                     break;
 			case 4: AlteraDados(&AP1, &AP2);
+                    break;
+            case 5: MenuRemoveVacina(&AP1);
+                    AtualizaInfoIndice('!', &IndPrim);
+                    break;
+            case 6: PesquisaCodPrim(&AP1, &AP2, &IndPrim);
                     break;
 	        case 0: printf("\nSaindo do Programa...");
 	                if (ExigeRecriaIndice(&IndPrim))
@@ -106,6 +112,8 @@ int Menu()
     printf("\n 2 - Cadastra Vacina");
 	printf("\n 3 - Altera Cachorro");
 	printf("\n 4 - Alterar dados de Vacina");
+	printf("\n 5 - Remove Vacina");
+	printf("\n 6 - Pesquisa Vacina");
 	printf("\n 0 - Sair");
 	printf("\n\nEscolha a opcao: ");
     scanf("%d", &opcao);
@@ -214,7 +222,7 @@ int ExisteCachorro(int codigo, FILE **AP2)
 {
 	registro reg;
 	
-	rewind(*AP2);
+	fseek(*AP2, 0, SEEK_SET);
 	while (fread(&reg, sizeof(registro), 1, *AP2))
 	{
 		if (reg.codigo == codigo)
@@ -302,7 +310,7 @@ void CadastraVacina(FILE **AP1, FILE **AP2, FILE **IndPrim)
     tam1++;
     AtualizaInfoIndice('!', IndPrim);
     fwrite(&tam_reg, sizeof(int), 1, *AP1);
-    fwrite(&verificador, sizeof(char), 1, *AP1);
+    fputc(verificador, *AP1);
     fwrite(registro, sizeof(char), tam_reg, *AP1);
 }
 
@@ -317,7 +325,7 @@ int ProcuraEspacoVazio(FILE **AP1, int tam_reg)
     int offset, tam, pos;
     char ch;
     
-    rewind(*AP1);
+    fseek(*AP1, 0, SEEK_SET);
     fread(&offset, sizeof(int), 1, *AP1);
     if (offset == -1)
         return -1;
@@ -364,7 +372,7 @@ void AlteraDados(FILE **AP1, FILE **AP2)
     int pos_cc, pos_vacina, pos_data, pos_respo;
     
     system("CLS");
-    rewind(*AP1);
+    fseek(*AP1, 0, SEEK_SET);
     printf("Codigo da vacina a ser alterada: ");
     scanf("%d", &cod);
     pos = RetornaPosicao(cod);
@@ -375,7 +383,7 @@ void AlteraDados(FILE **AP1, FILE **AP2)
         system("cls");
         return;
     }
-    rewind(*AP1);
+    fseek(*AP1, 0, SEEK_SET);
     fseek(*AP1, 0, pos);
     
     opcao = PerguntaOpcao();
@@ -486,7 +494,7 @@ void AlteraCachorro(FILE **AP2)
     system("CLS");
     cod = PerguntaCodigo(AP2);
 
-    rewind(*AP2);
+    fseek(*AP2, 0, SEEK_SET);
 	while (fread(&reg, sizeof(reg), 1, *AP2))
 	{
 		if (reg.codigo == cod)
@@ -541,7 +549,7 @@ int ExigeRecriaIndice(FILE **arq)
 {
 	char ch;
 	
-	rewind(*arq);
+	fseek(*arq, 0, SEEK_SET);
 	ch = fgetc(*arq);
 	if (ch == '!')
 	  return 1;
@@ -573,12 +581,11 @@ void RecriaIndicePrim(FILE **AP1)
 			{
 				INDEX1[tam1].offset = ftell(*AP1);
 				fseek(*AP1, INDEX1[tam1].offset, SEEK_SET);
-				fscanf(*AP1, "%d", INDEX1[tam1].codigo);
+				fread(&INDEX1[tam1].codigo, sizeof(int), 1, *AP1);
 				tam1++;
 			}
 			fseek(*AP1, 0, aux);
 			fread(&deslocamento, sizeof(int), 1, *AP1);
-			//fscanf(*AP1, "%d", deslocamento);
 			aux += deslocamento;
 			fseek(*AP1, sizeof(int), aux);
 			ch = fgetc(*AP1);
@@ -651,11 +658,11 @@ void CarregaIndice(FILE **arq, int tipo)
 
 void GravaIndices(FILE **IndPrim, FILE **IndSec1, FILE **IndSec2)
 {
-    rewind(*IndPrim);
+    fseek(*IndPrim, 0, SEEK_SET);
     AtualizaInfoIndice('*', IndPrim);
-    //fseek(IndPrim, sizeof(char), SEEK_SET);
     for(int i = 0; i < tam1; i++)
       fwrite(&INDEX1[i], sizeof(INDEX1[i]), 1, *IndPrim);
+    fputc(EOF, *IndPrim);
       
     //rewind(*IndSec1);
     //AtualizaInfoIndice('*', IndSec1);
@@ -679,22 +686,31 @@ void MenuRemoveVacina(FILE **AP1)
     printf(" Digite o codigo da vacina a ser removida: ");
     scanf("%d", &cod_controle);
     pos = RetornaPosicao(cod_controle);
-    RemoveVacina(AP1, pos);
+    RemoveVacina(AP1, pos, cod_controle);
 }
 
-void RemoveVacina(FILE **AP1, int pos)
+void RemoveVacina(FILE **AP1, int pos, int cod_controle)
 {
-    int tam_reg, header;
+    int header;
     char verificador = '!';
     
-    rewind(*AP1);
+    fseek(*AP1, 0, SEEK_SET);
     fread(&header, sizeof(int), 1, *AP1);
-    fseek(*AP1, pos, SEEK_SET);
-    fread(&tam_reg, sizeof(int), 1, *AP1);
+    fseek(*AP1, pos + sizeof(int), SEEK_SET);
     fwrite(&verificador, sizeof(char), 1, *AP1);
     fwrite(&header, sizeof(int), 1, *AP1);
-    rewind(*AP1);
-    fwrite(&pos, sizeof(int), 1, *AP1);    
+    fseek(*AP1, 0, SEEK_SET);
+    fwrite(&pos, sizeof(int), 1, *AP1); 
+    
+    for(int i = 0; i< tam1; i++)
+    {
+        if (cod_controle == INDEX1[i].codigo)
+        {
+            INDEX1[i] = INDEX1[tam1 - 1];
+            tam1--;
+            break;
+        }
+    }      
 }
 
 int RetornaPosicao(int codigo)
@@ -703,4 +719,56 @@ int RetornaPosicao(int codigo)
       if(codigo == INDEX1[i].codigo)
         return INDEX1[i].offset;
     return -1;
+}
+
+void PesquisaCodPrim(FILE **AP1, FILE **AP2, FILE **IndPrim)
+{
+    int cod_controle, cod_cachorro, offset, tam_reg;
+    char temp[255], *campo;
+    registro reg;
+    
+    system("CLS");
+    printf(" Digite o codigo de controle de vacina: ");
+    scanf("%d", &cod_controle);
+    
+    offset = RetornaPosicao(cod_controle);
+    fseek(*AP1, offset, SEEK_SET);
+    fread(&tam_reg, sizeof(int), 1, *AP1);
+    fseek(*AP1, sizeof(char), SEEK_CUR);
+    fread(temp, sizeof(char), tam_reg+1, *AP1);
+    
+    //PegaCampo(AP1, temp);
+    campo = strtok(temp, "|"); //código do controle
+    campo = strtok(NULL, "|"); //código do cachorro
+    cod_cachorro = atoi(campo);    
+    fseek(*AP2, 0, SEEK_SET);
+	while (fread(&reg, sizeof(registro), 1, *AP2))
+	{
+		if (reg.codigo == cod_cachorro)
+			break;
+    }
+    
+    system("CLS");
+    printf("INFORMACOES DO CACHORRO");
+    printf("\n\n Codigo: %d", cod_cachorro);
+    printf("\n\n Raca: ");
+    puts(reg.raca);
+    printf("\n Nome: ");
+    puts(reg.nome);
+    
+    printf("\n\nINFORMACOES DA VACINA");
+    printf("\n\n Codigo de Controle: %d", cod_controle);
+    printf("\n\n Codigo do Cachorro: %d", cod_cachorro);
+    //PegaCampo(*AP1, temp);
+    campo = strtok(NULL, "|");
+    printf("\n\n Nome da Vacina: ");
+    puts(campo);
+    //PegaCampo(*AP1, temp);
+    campo = strtok(NULL, "|");
+    printf("\n Data de Vacinacao: ");
+    puts(campo);
+    campo = strtok(NULL, "|");
+    printf("\n Responsavel pela Aplicacao: ");
+    puts(campo);
+    getch();   
 }
