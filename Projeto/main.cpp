@@ -4,6 +4,8 @@
 #include <string.h>
 #include <ctype.h>
 
+//Comentario teste para o pull request
+
 //Criação da estrutura para AP2
 typedef struct
 {
