@@ -138,7 +138,7 @@ void AbreArquivos(FILE **AP1, FILE **AP2, FILE **IndPrim, FILE **IndSec1, FILE *
     (Com o uso do r+b o arquivo tem que existir). 
     Aí então ele cria o arquivo com w+b*/
     if ((*AP1 = fopen("AP1.bin", "r+b")) == NULL) //se o arquivo não exisitr
-    {
+    {   //abre pela primeira vez (cria)
         *AP1 = fopen("AP1.bin", "w+b"); //cria um novo arquivo vazio (AP1)
     	fwrite(&header, sizeof(int), 1, *AP1);
     	*IndPrim = fopen("IndPrim.bin", "w+b");
@@ -413,26 +413,22 @@ void AlteraDados(FILE **AP1, FILE **IndPrim)
                   fflush(stdin);
                   printf("\n\n Digite o novo codigo do cachorro: ");
                   gets(NCodCa);
-                  //sprintf(registro, "%s|%s|%s|%s|%s|", NCodCo, NCodCa, Nvacina, Ndata, Nrespo);
                   break;
         case 'b': printf("\n\n Nome da vacina: %s", vacina);
                   fflush(stdin);
                   printf("\n\n Digite o novo nome da vacina: ");
                   fflush(stdin);
                   gets(Nvacina);
-                  //sprintf(registro, "%s|%s|%s|%s|%s|", CodCo, CodCa, Nvacina, data, respo);
                   break;
         case 'c': printf("\n\n Data (MM/AA): %s", data);
                   fflush(stdin);
                   printf("\n\n Digite a nova data (MM/AA): ");
                   gets(Ndata);
-                  //sprintf(registro, "%s|%s|%s|%s|%s|", CodCo, CodCa, vacina, Ndata, respo);
                   break;
         case 'd': printf("\n\n Responsavel pela aplicacao: %s", respo);
                   fflush(stdin);
                   printf("\n\n Digite o nome do novo responsavel pela aplicacao: ");
                   gets(Nrespo);
-                  //sprintf(registro, "%s|%s|%s|%s|%s|", CodCo, CodCa, vacina, data, Nrespo);
                   break;
          default: system("CLS");
                   printf("\n Opcao ivalida! Digite novamente...\n"); 
@@ -702,8 +698,11 @@ void MenuRemoveVacina(FILE **AP1)
     system("CLS");
     printf(" Digite o codigo da vacina a ser removida: ");
     scanf("%d", &cod_controle);
+    
     pos = RetornaPosicao(cod_controle);
     RemoveVacina(AP1, pos, cod_controle);
+    printf(" \nVacina Removida com sucesso!");
+    getch();
 }
 
 void RemoveVacina(FILE **AP1, int pos, int cod_controle)
@@ -822,6 +821,33 @@ void AtualizaListaEspacosVazios(FILE **AP1, int pos)
             }
             fseek(*AP1, posicao, SEEK_SET);
             fwrite(&aux, sizeof(int), 1, *AP1);
+        }
+    }
+}
+
+void Compacta (FILE **AP1)
+{
+    char ch, *aux;
+    int offset, i, pos, pos_fim;
+    rewind(*AP1);
+    
+    while(fread(&ch, sizeof(char), 1, *AP1))
+    {
+        if(ch == '!')
+        {
+            fseek(*AP1, -sizeof(int), SEEK_CUR);
+            pos = ftell(*AP1);
+            fread(&offset, sizeof(int), 1, *AP1);
+            fseek(*AP1, offset, SEEK_CUR);
+            for (i=0; i != EOF; i++)
+                aux[i] = fgetc(*AP1);
+            //pos_fim = ftell(*AP1);
+            //pos_fim = pos_fim - offset;
+            //fseek(*AP1, 0, pos_fim);
+            //fwrite(EOF, sizeof(int), 1, *AP1);
+            aux[i+1] = '\0';
+            fseek(*AP1, 0, pos);
+            fwrite(aux, strlen(aux), 1, *AP1);
         }
     }
 }
