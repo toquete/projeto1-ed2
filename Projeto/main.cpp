@@ -149,10 +149,10 @@ void AbreArquivos(FILE **AP1, FILE **AP2, FILE **IndPrim, FILE **IndSec1, FILE *
     	AtualizaInfoIndice('!', IndSec2);
 	}
 	else 
-	{  
-	    *IndPrim = fopen("IndPrim.bin", "r+b");
+	{
+        *IndPrim = fopen("IndPrim.bin", "r+b");
     	*IndSec1 = fopen("IndSec1.bin", "r+b");
-    	*IndSec2 = fopen("IndSec2.bin", "r+b");
+    	*IndSec2 = fopen("IndSec2.bin", "r+b");  
     	if (ExigeRecriaIndice(IndPrim))
     	{
     	   RecriaIndicePrim(AP1);
@@ -664,13 +664,15 @@ void CarregaIndice(FILE **arq, int tipo)
 				INDEX3[tam3] = ind1;
 				tam3++;
 			}
-			
 		}
 	}
 }
 
 void GravaIndices(FILE **IndPrim, FILE **IndSec1, FILE **IndSec2)
 {
+    fclose(*IndPrim);
+    remove("IndPrim.bin");
+    *IndPrim = fopen("IndPrim.bin", "w+b");
     fseek(*IndPrim, 0, SEEK_SET);
     AtualizaInfoIndice('*', IndPrim);
     for(int i = 0; i < tam1; i++)
