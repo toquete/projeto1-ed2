@@ -24,13 +24,12 @@ typedef struct
 
 indice1 INDEX1[50];
 indice2 INDEX2[50];
-indice1 INDEX3[50];
-int tam1 = 0, tam2 = 0, tam3 = 0; 
+int tam1 = 0, tam2 = 0;
 
 int Menu();
 void AbreArquivos(FILE **AP1, FILE **AP2, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2);
 int PerguntaCodigo(FILE **AP2);
-void CadastraVacina(FILE **AP1, FILE **AP2, FILE **IndPrim);
+void CadastraVacina(FILE **AP1, FILE **AP2, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2);
 void CadastraCachorro(FILE **AP2);
 void AtualizaInfoIndice(char status, FILE **arq);
 int ExisteCachorro(int codigo, FILE **AP2);
@@ -44,13 +43,20 @@ void RecriaIndicePrim(FILE **AP1);
 void QuickSortInd1(indice1 aux[], int left, int right);
 int ParticionarQSInd1(indice1 aux[], int left, int right, int pivo);
 void TrocaQSInd1(indice1 aux[], int i, int j);
+void QuickSortInd2(indice2 aux[], int left, int right);
+int ParticionarQSInd2(indice2 aux[], int left, int right, int pivo);
+void TrocaQSInd2(indice2 aux[], int i, int j);
 void CarregaIndice(FILE **arq, int tipo);
 void GravaIndices(FILE **IndPrim, FILE **IndSec1, FILE **IndSec2);
 void RemoveVacina(FILE **AP1, int pos, int cod_controle);
 int RetornaPosicao(int codigo);
 void MenuRemoveVacina(FILE **AP1);
-void PesquisaCodPrim(FILE **AP1, FILE **AP2, FILE **IndPrim);
+void PesquisaCodPrim(FILE **AP1, FILE **AP2);
 void AtualizaListaEspacosVazios(FILE **AP1, int pos);
+void InsereIndiceSecundario(FILE **IndSec2, int cod_controle, char *vacina);
+void RecriaIndiceSec(FILE **AP1, FILE **IndSec2);
+int RetornaOffset(char *vacina);
+void PesquisaVacinaSec(FILE **AP1, FILE **AP2, FILE **IndSec2);
 
 int main() 
 {
@@ -65,7 +71,7 @@ int main()
 	    {
 	        case 1: CadastraCachorro(&AP2); 
                     break;
-	        case 2: CadastraVacina(&AP1, &AP2, &IndPrim); 
+	        case 2: CadastraVacina(&AP1, &AP2, &IndPrim, &IndSec1, &IndSec2); 
                     break;
 			case 3: AlteraCachorro(&AP2);
                     break;
@@ -74,10 +80,12 @@ int main()
             case 5: MenuRemoveVacina(&AP1);
                     AtualizaInfoIndice('!', &IndPrim);
                     break;
-            case 6: PesquisaCodPrim(&AP1, &AP2, &IndPrim);
+            case 6: PesquisaCodPrim(&AP1, &AP2);
+                    break;
+            case 7: PesquisaVacinaSec(&AP1, &AP2, &IndSec2);
                     break;
 	        case 0: printf("\nSaindo do Programa...");
-	                if (ExigeRecriaIndice(&IndPrim))
+	                if ((ExigeRecriaIndice(&IndPrim)) || (ExigeRecriaIndice(&IndSec1)))
                       GravaIndices(&IndPrim, &IndSec1, &IndSec2);
 					//fecha arquivos principais  
         	        fclose(AP1); 
@@ -114,7 +122,8 @@ int Menu()
 	printf("\n 3 - Altera Cachorro");
 	printf("\n 4 - Alterar dados de Vacina");
 	printf("\n 5 - Remove Vacina");
-	printf("\n 6 - Pesquisa Vacina");
+	printf("\n 6 - Pesquisa por Codigo de Controle");
+	printf("\n 7 - Pesquisa por Nome da Vacina");
 	printf("\n 0 - Sair");
 	printf("\n\nEscolha a opcao: ");
     scanf("%d", &opcao);
@@ -156,13 +165,14 @@ void AbreArquivos(FILE **AP1, FILE **AP2, FILE **IndPrim, FILE **IndSec1, FILE *
     	if (ExigeRecriaIndice(IndPrim))
     	{
     	   RecriaIndicePrim(AP1);
-		   QuickSortInd1(INDEX1, 0, tam1);   
+		   QuickSortInd1(INDEX1, 0, tam1);
+           RecriaIndiceSec(AP1, IndSec2);
+           QuickSortInd2(INDEX2, 0, tam2);   
         }
         else
         {
            CarregaIndice(IndPrim, 1);
-    	   CarregaIndice(IndSec1, 2);
-    	   CarregaIndice(IndSec2, 1);  
+    	   CarregaIndice(IndSec1, 2); 
         }
 	}
     	
@@ -278,7 +288,7 @@ DESCRIÇÃO: Realiza o cadastro de vacinas
 PARÂMETROS: AP1 - Arquivo principal 1
             AP2 - Arquivo principal 2
 */
-void CadastraVacina(FILE **AP1, FILE **AP2, FILE **IndPrim)
+void CadastraVacina(FILE **AP1, FILE **AP2, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2)
 {
     int cod_controle, cod_cachorro, tam_reg, posicao, aux, header;
     char verificador = '*', vacina[30], data[6], respo[100], registro[255];
@@ -303,7 +313,10 @@ void CadastraVacina(FILE **AP1, FILE **AP2, FILE **IndPrim)
     if (posicao != -1)
       fseek(*AP1, posicao, SEEK_SET);
     else
+    {
       fseek(*AP1, 0, SEEK_END);
+      posicao = -1;  
+    }
       
     INDEX1[tam1].codigo = cod_controle;
     INDEX1[tam1].offset = ftell(*AP1);
@@ -312,8 +325,13 @@ void CadastraVacina(FILE **AP1, FILE **AP2, FILE **IndPrim)
     AtualizaInfoIndice('!', IndPrim);
     
     if (posicao != -1)
+    {
       AtualizaListaEspacosVazios(AP1, posicao);
+      fseek(*AP1, posicao, SEEK_SET);  
+    }
     
+    InsereIndiceSecundario(IndSec2, cod_controle, vacina);
+          
     fwrite(&tam_reg, sizeof(int), 1, *AP1);
     fputc(verificador, *AP1);
     fwrite(registro, sizeof(char), tam_reg, *AP1);
@@ -630,7 +648,7 @@ int ParticionarQSInd1(indice1 aux[], int left,int right,int pivo)
     TrocaQSInd1(aux, right, pos);
     return pos;
 }
- 
+
 void QuickSortInd1(indice1 aux[], int left, int right)
 {
 	int pivo, pos;
@@ -644,28 +662,65 @@ void QuickSortInd1(indice1 aux[], int left, int right)
     }
 }
 
+void TrocaQSInd2(indice2 aux[], int i, int j) 
+{
+    indice2 t = aux[i];
+    aux[i] = aux[j];
+    aux[j] = t;
+}
+ 
+int ParticionarQSInd2(indice2 aux[], int left,int right,int pivo)
+{
+    int pos, i;
+    TrocaQSInd2(aux, pivo, right);
+    pos = left;
+    for(i = left; i < right; i++)
+    {
+        if (strcmp(aux[i].vacina, aux[right].vacina) < 0)// aux[i].codigo < aux[right].codigo)
+        {
+            TrocaQSInd2(aux, i, pos);
+            pos++;
+        }
+    }
+    TrocaQSInd2(aux, right, pos);
+    return pos;
+}
+ 
+void QuickSortInd2(indice2 aux[], int left, int right)
+{
+	int pivo, pos;
+	
+    if (left < right)
+    {
+        pivo = (left + right) / 2;
+        pos = ParticionarQSInd2(aux,left,right,pivo);
+        QuickSortInd2(aux, left, pos - 1);
+        QuickSortInd2(aux, pos + 1, right);
+    }
+}
+
 void CarregaIndice(FILE **arq, int tipo)
 {
 	indice1 ind1;
 	indice2 ind2;
 	
-	if (tipo != 2)
+	fseek(*arq, sizeof(char), SEEK_SET);
+	if (tipo == 1)
 	{
-		fseek(*arq, sizeof(char), SEEK_SET);
 		while (fread(&ind1, sizeof(indice1), 1, *arq))
 		{
-			if (tipo == 1)
-			{
-				INDEX1[tam1] = ind1;
-				tam1++;	
-			}
-			else
-			{
-				INDEX3[tam3] = ind1;
-				tam3++;
-			}
+    		INDEX1[tam1] = ind1;
+    		tam1++;
 		}
 	}
+	else
+	{
+	    while (fread(&ind2, sizeof(indice2), 1, *arq))
+		{
+    		INDEX2[tam2] = ind2;
+    		tam2++;
+		}   
+    }
 }
 
 void GravaIndices(FILE **IndPrim, FILE **IndSec1, FILE **IndSec2)
@@ -679,17 +734,22 @@ void GravaIndices(FILE **IndPrim, FILE **IndSec1, FILE **IndSec2)
       fwrite(&INDEX1[i], sizeof(INDEX1[i]), 1, *IndPrim);
     fputc(EOF, *IndPrim);
       
-    //rewind(*IndSec1);
-    //AtualizaInfoIndice('*', IndSec1);
-    //fseek(IndPrim, sizeof(char), SEEK_SET);
-    //for(int i = 0; i < tam2; i++)
-    //  fwrite(&INDEX2[i], sizeof(INDEX2[i]), 1, *IndSec1);
+    fclose(*IndSec1);
+    remove("IndSec1.bin");
+    *IndSec1 = fopen("IndSec1.bin", "w+b");
+    fseek(*IndSec1, 0, SEEK_SET);
+    AtualizaInfoIndice('*', IndSec1);
+    for(int i = 0; i < tam2; i++)
+      fwrite(&INDEX2[i], sizeof(INDEX2[i]), 1, *IndSec1);
+    fputc(EOF, *IndSec1);
       
-    //rewind(*IndSec2);
-    //AtualizaInfoIndice('*', IndSec2);
-    //fseek(IndPrim, sizeof(char), SEEK_SET);
-    //for(int i = 0; i < tam2; i++)
-    //  fwrite(&INDEX3[i], sizeof(INDEX3[i]), 1, *IndSec2);
+    /*fclose(*IndSec2);
+    remove("IndSec2.bin");
+    *IndSec2 = fopen("IndSec2.bin", "r+b");
+    fseek(*IndSec2, 0, SEEK_SET);
+    AtualizaInfoIndice('*', IndSec2);
+    for(int i = 0; i < tam2; i++)
+      fwrite(&INDEX2[i], sizeof(INDEX2[i]), 1, *IndSec1);*/
       
 }
 
@@ -740,7 +800,7 @@ int RetornaPosicao(int codigo)
     return -1;
 }
 
-void PesquisaCodPrim(FILE **AP1, FILE **AP2, FILE **IndPrim)
+void PesquisaCodPrim(FILE **AP1, FILE **AP2)
 {
     int cod_controle, cod_cachorro, offset, tam_reg;
     char temp[255], *campo;
@@ -791,40 +851,32 @@ void PesquisaCodPrim(FILE **AP1, FILE **AP2, FILE **IndPrim)
 
 void AtualizaListaEspacosVazios(FILE **AP1, int pos)
 {
-    int aux, header, offset, posicao;
+    int i = 0, aux, offset, posicao;
     
-    fseek(*AP1, sizeof(char), SEEK_CUR);
-    fread(&aux, sizeof(int), 1, *AP1);
-    if (aux == -1)
+    fseek(*AP1, 0, SEEK_SET);
+    fread(&offset, sizeof(int), 1, *AP1);
+    fseek(*AP1, offset + sizeof(int) + sizeof(char), SEEK_SET);
+    posicao = ftell(*AP1);
+    while (fread(&offset, sizeof(int), 1, *AP1))
     {
-        fseek(*AP1, 0, SEEK_SET);
-        fwrite(&aux, sizeof(int), 1, *AP1);
-    }
-    else
-    {
-        fseek(*AP1, 0, SEEK_SET);
-        fread(&header, sizeof(int), 1, *AP1);
-        if ((pos - header) == 0)
-        {
-           fseek(*AP1, 0, SEEK_SET);
-           fwrite(&aux, sizeof(int), 1, *AP1); 
-        }
-        else
+        if ((offset == -1) && (i == 0))
         {
             fseek(*AP1, 0, SEEK_SET);
-            fread(&offset, sizeof(int), 1, *AP1);
-            fseek(*AP1, offset + sizeof(int) + sizeof(char), SEEK_SET);
-            posicao = ftell(*AP1);
-            while (fread(&offset, sizeof(int), 1, *AP1))
-            {
-                if (offset == pos)
-                  break;
-                fseek(*AP1, offset + sizeof(int) + sizeof(char), SEEK_SET);
-            }
-            fseek(*AP1, posicao, SEEK_SET);
-            fwrite(&aux, sizeof(int), 1, *AP1);
+            fwrite(&offset, sizeof(int), 1, *AP1);
+            return;
         }
+        else if (offset == pos)
+        {
+            fseek(*AP1, offset + sizeof(int) + sizeof(char), SEEK_SET);
+            fread(&aux, sizeof(int), 1, *AP1);
+            break;      
+        }
+        fseek(*AP1, offset + sizeof(int) + sizeof(char), SEEK_SET);
+        posicao = ftell(*AP1);
+        i++;
     }
+    fseek(*AP1, posicao, SEEK_SET);
+    fwrite(&aux, sizeof(int), 1, *AP1);
 }
 
 void Compacta (FILE **AP1)
@@ -852,4 +904,145 @@ void Compacta (FILE **AP1)
             fwrite(aux, strlen(aux), 1, *AP1);
         }
     }
+}
+
+void InsereIndiceSecundario(FILE **IndSec2, int cod_controle, char *vacina)
+{
+    int offset, final = -1;
+    
+    for (int i = 0; i < tam2; i++)
+    {
+        if (strcmp(INDEX2[i].vacina, vacina) == 0)
+        {
+            fseek(*IndSec2, 0, SEEK_END);
+            offset = ftell(*IndSec2);
+            fwrite(&cod_controle, sizeof(int), 1, *IndSec2);
+            fwrite(&INDEX2[i].offset, sizeof(int), 1, *IndSec2);
+            INDEX2[i].offset = offset;
+            return;
+        }
+    }
+    
+    fseek(*IndSec2, 0, SEEK_END);
+    offset = ftell(*IndSec2);
+    fwrite(&cod_controle, sizeof(int), 1, *IndSec2);
+    fwrite(&final, sizeof(int), 1, *IndSec2);
+    INDEX2[tam2].offset = offset;
+    strcpy(INDEX2[tam2].vacina, vacina);
+    tam2++;
+    //QuickSortInd2(INDEX2, 0, tam2);
+}
+
+void RecriaIndiceSec(FILE **AP1, FILE **IndSec2)
+{
+    int deslocamento, aux, cod_controle, tam_reg;
+	char ch, vacina[30], buffer[255], *campo;
+	
+	fseek(*AP1, sizeof(int), SEEK_SET); //header
+	aux = ftell(*AP1);
+	ch = fgetc(*AP1);
+	if (ch == EOF)
+		return;
+	else
+	{
+		fseek(*AP1, sizeof(int), SEEK_SET); //primeiro registro
+		fread(&tam_reg, sizeof(int), 1, *AP1);
+		ch = fgetc(*AP1);
+		while (ch != EOF)
+		{
+			if (ch != '!')
+			{
+			    fread(buffer, sizeof(char), tam_reg+1, *AP1);
+			    campo = strtok(buffer, "|");
+			    cod_controle = atoi(campo);
+			    campo = strtok(NULL, "|");
+			    campo = strtok(NULL, "|");
+			    strcpy(vacina, campo);
+			    InsereIndiceSecundario(IndSec2, cod_controle, vacina);
+			}
+			fseek(*AP1, 0, aux);
+			fread(&deslocamento, sizeof(int), 1, *AP1);
+			aux += deslocamento;
+			fseek(*AP1, sizeof(int), aux);
+			ch = fgetc(*AP1);
+		}	
+	}
+}
+
+void PesquisaVacinaSec(FILE **AP1, FILE **AP2, FILE **IndSec2)
+{
+    int cod_controle, cod_cachorro, offset, offset_AP, tam_reg;
+    char vacina[30], temp[255], *campo;
+    registro reg;
+    indice1 ind;
+    
+    system("CLS");
+    fflush(stdin);
+    printf(" Digite o nome da vacina: ");
+    gets(vacina);
+    
+    offset = RetornaOffset(vacina);
+    while (offset == -1)
+    {
+        printf("\n\n Vacina inxistente! Digite novamente.");
+        getch();
+        system("CLS");
+        printf(" Digite o nome da vacina: ");
+        gets(vacina);
+        offset = RetornaOffset(vacina);
+    }
+    system("CLS");
+    fseek(*IndSec2, offset, SEEK_SET);
+    while (fread(&ind, sizeof(indice1), 1, *IndSec2))
+    {
+        offset_AP = RetornaPosicao(ind.codigo);
+        fseek(*AP1, offset_AP, SEEK_SET);
+        fread(&tam_reg, sizeof(int), 1, *AP1);
+        fseek(*AP1, sizeof(char), SEEK_CUR);
+        fread(temp, sizeof(char), tam_reg+1, *AP1);
+        campo = strtok(temp, "|"); //código do controle
+        cod_controle = atoi(campo);
+        campo = strtok(NULL, "|"); //código do cachorro
+        cod_cachorro = atoi(campo);    
+        fseek(*AP2, 0, SEEK_SET);
+        while (fread(&reg, sizeof(registro), 1, *AP2))
+        {
+        	if (reg.codigo == cod_cachorro)
+        		break;
+        }
+        
+        printf("--------------------------------------------\n");
+        printf("INFORMACOES DO CACHORRO");
+        printf("\n\n Codigo: %d", cod_cachorro);
+        printf("\n\n Raca: ");
+        puts(reg.raca);
+        printf("\n Nome: ");
+        puts(reg.nome);
+        
+        printf("\n\nINFORMACOES DA VACINA");
+        printf("\n\n Codigo de Controle: %d", cod_controle);
+        printf("\n\n Codigo do Cachorro: %d", cod_cachorro);
+        campo = strtok(NULL, "|");
+        printf("\n\n Nome da Vacina: ");
+        puts(campo);
+        campo = strtok(NULL, "|");
+        printf("\n Data de Vacinacao: ");
+        puts(campo);
+        campo = strtok(NULL, "|");
+        printf("\n Responsavel pela Aplicacao: ");
+        puts(campo);
+        fflush(stdin);
+        if (ind.offset == -1)
+          break;
+        fseek(*IndSec2, ind.offset, SEEK_SET);
+    }
+    getch();   
+}
+
+int RetornaOffset(char *vacina)
+{
+    for(int i = 0; i < tam2; i++)
+      if(strcmp(vacina, INDEX2[i].vacina) == 0)
+        return INDEX2[i].offset;
+    return -1;   
 }
