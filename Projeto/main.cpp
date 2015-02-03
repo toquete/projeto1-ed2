@@ -773,12 +773,14 @@ void RemoveVacina(FILE **AP1, int pos, int cod_controle)
     char verificador = '!';
     
     fseek(*AP1, 0, SEEK_SET);
-    fread(&header, sizeof(int), 1, *AP1);
-    fseek(*AP1, pos + sizeof(int), SEEK_SET);
-    fwrite(&verificador, sizeof(char), 1, *AP1);
-    fwrite(&header, sizeof(int), 1, *AP1);
+    fread(&header, sizeof(int), 1, *AP1);//pegou o header atual
+    fseek(*AP1, pos + sizeof(int), SEEK_SET);//foi para o registro que será removido
+    fwrite(&verificador, sizeof(char), 1, *AP1);//subescreveu para indicar que o registro está inativo '!'
+    fwrite(&header, sizeof(int), 1, *AP1);//escreve a próxima posição disponível
+    //se '-1', não há registros livres (insere no final) 
     fseek(*AP1, 0, SEEK_SET);
-    fwrite(&pos, sizeof(int), 1, *AP1); 
+    fwrite(&pos, sizeof(int), 1, *AP1);
+    //escreve no início do arquivo a posição do registro que foi removido
     
     for(int i = 0; i< tam1; i++)
     {
@@ -789,7 +791,7 @@ void RemoveVacina(FILE **AP1, int pos, int cod_controle)
             break;
         }
     }
-    QuickSortInd1(INDEX1, 0, tam1);     
+    QuickSortInd1(INDEX1, 0, tam1);
 }
 
 int RetornaPosicao(int codigo)
@@ -881,29 +883,56 @@ void AtualizaListaEspacosVazios(FILE **AP1, int pos)
 
 void Compacta (FILE **AP1)
 {
-    char ch, *aux;
-    int offset, i, pos, pos_fim;
-    rewind(*AP1);
+    char *resto, status, *cod_controle;
+    int cont = 0, cont_aux = 0, tam_reg, dispo, pos, pos_, cc; 
+    //cc = codigo de controle(convertido em int)
     
-    while(fread(&ch, sizeof(char), 1, *AP1))
+    system("CLS");
+    printf("\n Compactando...");
+    while(dispo != -1)
     {
-        if(ch == '!')
+        fseek(*AP1, 0, SEEK_SET);
+        fread(&dispo, sizeof(int), 1, *AP1);
+        //dispo recebeu header para começar a lista de registros disponíveis
+        cont++;
+        if(dispo == -1 && cont == 1)
         {
-            fseek(*AP1, -sizeof(int), SEEK_CUR);
-            pos = ftell(*AP1);
-            fread(&offset, sizeof(int), 1, *AP1);
-            fseek(*AP1, offset, SEEK_CUR);
-            for (i=0; i != EOF; i++)
-                aux[i] = fgetc(*AP1);
-            //pos_fim = ftell(*AP1);
-            //pos_fim = pos_fim - offset;
-            //fseek(*AP1, 0, pos_fim);
-            //fwrite(EOF, sizeof(int), 1, *AP1);
-            aux[i+1] = '\0';
-            fseek(*AP1, 0, pos);
-            fwrite(aux, strlen(aux), 1, *AP1);
+            printf("\n Arquivo ja compactado!");
+            getch();
+            return;
         }
+        fseek(*AP1, dispo + sizeof(int), SEEK_SET);//vai para o registro removido
+        //sizeof(int) pula o header
+        pos = ftell(*AP1);//pega a posição inicial do registro que está indisponível
+        fread(&tam_reg, sizeof(int), 1, *AP1);//pega o tamanho do registrador
+        fseek(*AP1, sizeof(char), SEEK_CUR);//o status é '!' 
+        fread(&dispo, sizeof(int), 1, *AP1);//pega o próximo registro disponível
+        fseek(*AP1, tam_reg + sizeof(int), pos);
+        do //lógica para alterar índices
+        {
+            pos_ = ftell(*AP1);
+            fread(&status, sizeof(char), 1, *AP1);//verifica se o registro está sendo usado
+            PegaCampo(AP1, cod_controle, pos_);
+            cc = atoi(cod_controle);
+            if(status == '*')//se o registro está em uso
+            {//atualiza os índices
+                cont_aux = 0;
+                for(int i = 0; i<tam1; i++)
+                {
+                    if (cc == INDEX1[i].codigo)
+                        cont_aux++;
+                    if (cont_aux>0)    
+                        INDEX1[i].offset = INDEX1[i].offset-tam_reg;
+                }
+            }
+        }while(status != '!');
+        
+        fseek(*AP1, tam_reg + sizeof(int), pos);
+        fread(resto, sizeof(char), 99999, *AP1);//pegou o resto do arquivo
+        fseek(*AP1, 0, pos);
+        fwrite(resto, sizeof(char), strlen(resto), *AP1);
     }
+    fseek(*AP1, 0, SEEK_SET);
 }
 
 void InsereIndiceSecundario(FILE **IndSec2, int cod_controle, char *vacina)
