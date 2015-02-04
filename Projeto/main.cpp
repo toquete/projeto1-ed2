@@ -936,6 +936,58 @@ void AtualizaListaEspacosVazios(FILE **AP1, int pos)
 
 void Compacta (FILE **AP1)
 {
+    FILE *aux;
+    int cont = 0, dispo, tam = 1, offset = -1, pos; // header, tam_del = 0;
+    char status, *resto;
+    
+    if((aux = fopen("aux.bin", "r+b")) == NULL)
+        aux = fopen("aux.bin", "w+b");
+    system("CLS");
+    printf("\n Compactando...");
+    
+    //fseek(*AP1, 0, SEEK_SET);
+    //fread(&header, sizeof(int), 1, *AP1);
+    fseek(*AP1, sizeof(int), SEEK_SET);
+    
+    fseek(aux, 0, SEEK_SET);    
+    fwrite(&offset, sizeof(int), 1, aux);
+    //offset é utilizado como coringa para a escrita do header no início do arquivo aux (-1)
+    
+    while(cont != 1 || tam != EOF) //percorre o AP1
+    {
+        pos = ftell(*AP1);
+        fread(&tam, sizeof(int), 1, *AP1);
+        fread(&status, sizeof(char), 1, *AP1);
+        
+        if (status == '!') //se o registro não for válido
+        {//faz o offset para o próximo registro
+            //tam_del = tam_del + tam;
+            fread(&dispo, sizeof(int), 1, *AP1);
+            if(dispo == -1)
+                cont++;
+            fseek(*AP1, tam, pos);
+        }
+        else
+        {//escreve no arquivo auxiliar
+            //tam = tam - tam_del; //para atualizar o índice prim
+            fwrite(&tam, sizeof(int), 1, aux);
+            fwrite(&status, sizeof(char), 1, aux);
+            fread(resto, sizeof(char), tam - 1, *AP1);
+            fwrite(resto, sizeof(char), strlen(resto), aux);
+        }
+    }
+    printf("\n Arquivo compactado com sucesso!");
+    
+    remove("AP1.bin");
+    rename("aux.bin", "AP1.bin");
+    RecriaIndicePrim(AP1);
+    
+    getch();
+    fseek(*AP1, 0, SEEK_SET);
+}
+
+/*void Compacta (FILE **AP1)
+{
     char *resto, status, *cod_controle;
     //resto = resto do arquivo para ser deslocado
     ////status = status('!' ou '*') do próximo registro, ou seja, registro depois do disponível
@@ -967,27 +1019,6 @@ void Compacta (FILE **AP1)
         fread(&tam_reg, sizeof(int), 1, *AP1);//pega o tamanho do registrador
         fseek(*AP1, sizeof(char), SEEK_CUR);//pula o status, que é '!' 
         fread(&dispo, sizeof(int), 1, *AP1);//pega o próximo registro disponível
-        /*fseek(*AP1, tam_reg, pos);
-        do //lógica para alterar índices
-        {
-            fseek(*AP1, sizeof(char), SEEK_CUR);
-            pos_ = ftell(*AP1);
-            fseek(*AP1, sizeof(int), SEEK_CUR);
-            fread(&status, sizeof(char), 1, *AP1);//verifica se o registro está sendo usado
-            if(status == '*')//se o registro está em uso
-            {//atualiza os índices
-                PegaCampo(AP1, cod_controle, pos_);
-                cc = atoi(cod_controle);
-                cont_aux = 0;
-                for(int i = 0; i<tam1; i++)
-                {
-                    if (cc == INDEX1[i].codigo)
-                        cont_aux++;
-                    if (cont_aux>0)    
-                        INDEX1[i].offset = INDEX1[i].offset - tam_reg;
-                }
-            }
-        }while(status != '!');*/
         
         fseek(*AP1, tam_reg, pos);
         //ERRO AQUI
@@ -997,17 +1028,17 @@ void Compacta (FILE **AP1)
         AtualizaListaEspacosVazios(AP1, pos);
         RecriaIndicePrim(AP1);
         
-        /*//atualiza o header
+        //atualiza o header
         fseek(*AP1, 0, SEEK_SET);
         fwrite(dispo, sizeof(int), 1, *AP1);
         
         //fseek(*AP1, 0, SEEK_SET);
-        //fread(&dispo, sizeof(int), 1, *AP1);*/
+        //fread(&dispo, sizeof(int), 1, *AP1);
     }while(dispo != -1);
     printf("\n Arquivo compactado com sucesso!");
     getch();
     fseek(*AP1, 0, SEEK_SET);
-}
+}*/
 
 void InsereIndiceSecundario(FILE **IndSec2, int cod_controle, char *vacina)
 {
