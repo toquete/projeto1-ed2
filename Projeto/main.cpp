@@ -937,27 +937,26 @@ void AtualizaListaEspacosVazios(FILE **AP1, int pos)
 void Compacta (FILE **AP1)
 {
     FILE *aux;
-    int cont = 0, dispo, tam = 1, offset = -1;
+    int cont = 0, dispo, tam = 1, offset = -1, pos;
     char status, *resto;
     
-    if((aux = fopen("aux.bin", "r+b")) == NULL)
-        aux = fopen("aux.bin", "w+b");
+    aux = fopen("aux.bin", "w+b");
     system("CLS");
     printf("\n Compactando...");
     
-    fseek(*AP1, sizeof(int), SEEK_SET);
+    fseek(*AP1, sizeof(int), SEEK_SET); //pulou o header
     
     fseek(aux, 0, SEEK_SET);    
     fwrite(&offset, sizeof(int), 1, aux);
     //offset é utilizado como coringa para a escrita do header no início do arquivo aux (-1)
     
-    while(tam != EOF) //percorre o AP1
+    while(!EOF) //percorre o AP1
     {
         fread(&tam, sizeof(int), 1, *AP1);
         fread(&status, sizeof(char), 1, *AP1);
         if (status == '!') //se o registro não for válido
-        {//faz o offset para o próximo registro
-            fseek(*AP1, tam, SEEK_CUR);
+        {
+            fseek(*AP1, tam, SEEK_CUR); //faz o offset para o próximo registro
         }
         else
         {//escreve no arquivo auxiliar
@@ -972,12 +971,11 @@ void Compacta (FILE **AP1)
     fclose(*AP1);
     remove("AP1.bin");
     rename("aux.bin", "AP1.bin");
-    if((aux = fopen("AP1.bin", "r+b")) == NULL)
+    if((aux = fopen("AP1.bin", "w+b")) == NULL)
         aux = fopen("AP1.bin", "w+b");
     RecriaIndicePrim(AP1);
     
     getch();
-    fseek(*AP1, 0, SEEK_SET);
 }
 
 /*void Compacta (FILE **AP1)
