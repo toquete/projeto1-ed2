@@ -950,7 +950,7 @@ void Compacta (FILE **AP1)
     fwrite(&offset, sizeof(int), 1, aux);
     //offset é utilizado como coringa para a escrita do header no início do arquivo aux (-1)
     
-    while(!EOF) //percorre o AP1
+    while(!feof(*AP1)) //percorre o AP1
     {
         fread(&tam, sizeof(int), 1, *AP1);
         fread(&status, sizeof(char), 1, *AP1);
