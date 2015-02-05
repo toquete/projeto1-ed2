@@ -937,10 +937,14 @@ void AtualizaListaEspacosVazios(FILE **AP1, int pos)
 void Compacta (FILE **AP1)
 {
     FILE *aux;
-    int cont = 0, dispo, tam = 1, offset = -1, pos;
-    char status, *resto;
+    int dispo, tam, offset = -1, pos;
+    char status, resto[255];
     
-    aux = fopen("aux.bin", "w+b");
+//    char resto[255], *CodCo, *CodCa, *vacina, *data, *respo;
+//    char NCodCo[5], NCodCa[5], Nvacina[100], Ndata[6], Nrespo[150];
+    
+    if((aux = fopen("aux.bin", "w+b")) == NULL)
+        aux = fopen("aux.bin", "w+b");
     system("CLS");
     printf("\n Compactando...");
     
@@ -949,20 +953,24 @@ void Compacta (FILE **AP1)
     fseek(aux, 0, SEEK_SET);    
     fwrite(&offset, sizeof(int), 1, aux);
     //offset é utilizado como coringa para a escrita do header no início do arquivo aux (-1)
-    
+int cont = 0;
     while(!feof(*AP1)) //percorre o AP1
-    {
+    {cont++; //vai até a qtd de registros removidos! //verificar erros nos arquivos
         fread(&tam, sizeof(int), 1, *AP1);
         fread(&status, sizeof(char), 1, *AP1);
+        printf(" %d ", cont); getch();
+        getch();
         if (status == '!') //se o registro não for válido
         {
+        printf("a");getch();
             fseek(*AP1, tam, SEEK_CUR); //faz o offset para o próximo registro
         }
         else
         {//escreve no arquivo auxiliar
-            fwrite(&tam, sizeof(int), 1, aux);
-            fwrite(&status, sizeof(char), 1, aux);
+        printf("b");getch();
             fread(resto, sizeof(char), tam, *AP1);
+            resto[sizeof(resto)] = '\0';
+            printf(" %s", resto); getch();
             fwrite(resto, sizeof(char), strlen(resto), aux);
         }
     }
