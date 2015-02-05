@@ -334,6 +334,7 @@ void CadastraVacina(FILE **AP1, FILE **AP2, FILE **IndPrim, FILE **IndSec1, FILE
     }
     
     InsereIndiceSecundario(IndSec2, cod_controle, vacina);
+    QuickSortInd2(INDEX2, 0, tam2);
           
     fwrite(&tam_reg, sizeof(int), 1, *AP1);
     fputc(verificador, *AP1);
