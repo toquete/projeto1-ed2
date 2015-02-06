@@ -35,7 +35,7 @@ void AtualizaInfoIndice(char status, FILE **arq);
 int ExisteCachorro(int codigo, FILE **AP2);
 int ProcuraEspacoVazio(FILE **AP1, int tam_reg);
 char PerguntaOpcao();
-void AlteraDados(FILE **AP1, FILE **IndPrim, FILE **IndSec2);
+void AlteraDados(FILE **AP1, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2);
 void PegaCampo(FILE **AP2, char *campo, int pos);
 void AlteraCachorro(FILE **AP2);
 int ExigeRecriaIndice(FILE **arq);
@@ -48,9 +48,9 @@ int ParticionarQSInd2(indice2 aux[], int left, int right, int pivo);
 void TrocaQSInd2(indice2 aux[], int i, int j);
 void CarregaIndice(FILE **arq, int tipo);
 void GravaIndices(FILE **IndPrim, FILE **IndSec1, FILE **IndSec2);
-void RemoveVacina(FILE **AP1, FILE **IndPrim, FILE **IndSec2, int pos, int cod_controle);
+void RemoveVacina(FILE **AP1, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2, int pos, int cod_controle);
 int RetornaPosicao(int codigo);
-void MenuRemoveVacina(FILE **AP1, FILE **IndPrim, FILE **IndSec2);
+void MenuRemoveVacina(FILE **AP1, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2);
 void PesquisaCodPrim(FILE **AP1, FILE **AP2);
 void AtualizaListaEspacosVazios(FILE **AP1, int pos);
 void Compacta (FILE **AP1, FILE **aux);
@@ -76,9 +76,9 @@ int main()
                     break;
 			case 3: AlteraCachorro(&AP2);
                     break;
-			case 4: AlteraDados(&AP1, &IndPrim, &IndSec2);
+			case 4: AlteraDados(&AP1, &IndPrim, &IndSec1, &IndSec2);
                     break;
-            case 5: MenuRemoveVacina(&AP1, &IndPrim, &IndSec2);
+            case 5: MenuRemoveVacina(&AP1, &IndPrim, &IndSec1, &IndSec2);                   
                     break;
             case 6: PesquisaCodPrim(&AP1, &AP2);
                     break;
@@ -394,7 +394,7 @@ DESCRIÇÃO: Altera os dados de uma cadastro de vacina já exitente
 PARÂMETROS: AP1 - Arquivo Principal 1
             IndPrim - Índice primário (para ser atualizado caso haja exclusão)
 */
-void AlteraDados(FILE **AP1, FILE **IndPrim, FILE **IndSec2)
+void AlteraDados(FILE **AP1, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2)
 {
     char opcao, registro[255], *CodCo, *CodCa, *vacina, *data, *respo;
     char verificador = '*', NCodCo[5], NCodCa[5], Nvacina[100], Ndata[6], Nrespo[150];
@@ -464,7 +464,7 @@ void AlteraDados(FILE **AP1, FILE **IndPrim, FILE **IndSec2)
     Ntam_reg = strlen(registro);
     if (Ntam_reg > tam_reg)
     {
-        RemoveVacina(AP1, IndPrim, IndSec2, pos, atoi(CodCo));
+        RemoveVacina(AP1, IndPrim, IndSec1, IndSec2, pos, atoi(CodCo));
         pos = ProcuraEspacoVazio(AP1, tam_reg);
         if (pos != -1)
           fseek(*AP1, pos, SEEK_SET);
@@ -720,17 +720,9 @@ void GravaIndices(FILE **IndPrim, FILE **IndSec1, FILE **IndSec2)
       fwrite(&INDEX2[i], sizeof(INDEX2[i]), 1, *IndSec1);
     fputc(EOF, *IndSec1);
       
-    /*fclose(*IndSec2);
-    remove("IndSec2.bin");
-    *IndSec2 = fopen("IndSec2.bin", "r+b");
-    fseek(*IndSec2, 0, SEEK_SET);
-    AtualizaInfoIndice('*', IndSec2);
-    for(int i = 0; i < tam2; i++)
-      fwrite(&INDEX2[i], sizeof(INDEX2[i]), 1, *IndSec1);*/
-      
 }
 
-void MenuRemoveVacina(FILE **AP1, FILE **IndPrim, FILE **IndSec2)
+void MenuRemoveVacina(FILE **AP1, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2)
 {
     int cod_controle, pos;
     
@@ -739,12 +731,12 @@ void MenuRemoveVacina(FILE **AP1, FILE **IndPrim, FILE **IndSec2)
     scanf("%d", &cod_controle);
     
     pos = RetornaPosicao(cod_controle);
-    RemoveVacina(AP1, IndPrim, IndSec2, pos, cod_controle);
+    RemoveVacina(AP1, IndPrim, IndSec1, IndSec2, pos, cod_controle);
     printf(" \nVacina Removida com sucesso!");
     getch();
 }
 
-void RemoveVacina(FILE **AP1, FILE **IndPrim, FILE **IndSec2, int pos, int cod_controle)
+void RemoveVacina(FILE **AP1, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2, int pos, int cod_controle)
 {
     int header, tam_reg, offset, offset_novo, pos_ind, cont = 0;
     char verificador = '!', buffer[255], vacina[30], *temp; //todo: lembrar de pegar o nome da vacina
@@ -778,8 +770,6 @@ void RemoveVacina(FILE **AP1, FILE **IndPrim, FILE **IndSec2, int pos, int cod_c
             break;
         }
     }
-    QuickSortInd1(INDEX1, 0, tam1);
-    AtualizaInfoIndice('!', IndPrim);
     
     for(int i = 0; i < tam2; i++)
     {
@@ -798,13 +788,14 @@ void RemoveVacina(FILE **AP1, FILE **IndPrim, FILE **IndSec2, int pos, int cod_c
             {
                 if(ind.offset == -1)
                 {
-                    INDEX2[pos_ind].offset = -1;
-                    return;
+                    INDEX2[pos_ind] = INDEX2[tam2 - 1];
+                    tam2--;
+                    break;
                 }
                 else
                 {
                     INDEX2[pos_ind].offset = ind.offset;
-                    return;
+                    break;
                 }
             }
             else
@@ -819,6 +810,12 @@ void RemoveVacina(FILE **AP1, FILE **IndPrim, FILE **IndSec2, int pos, int cod_c
         fseek(*IndSec2, ind.offset, SEEK_SET);
         cont++;        
     }
+    
+    QuickSortInd1(INDEX1, 0, tam1);
+    AtualizaInfoIndice('!', IndPrim);
+    QuickSortInd2(INDEX2, 0, tam2);
+    AtualizaInfoIndice('!', IndSec1);
+    AtualizaInfoIndice('!', IndSec2); 
 }
 
 int RetornaPosicao(int codigo)
