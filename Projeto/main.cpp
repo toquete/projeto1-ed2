@@ -4,18 +4,20 @@
 #include <string.h>
 #include <ctype.h>
 
-//Criação da estrutura para AP2
+//estrutura do arquivo principal 2
 typedef struct
 {
 	int codigo;
 	char raca[30], nome[100];
 } registro;
 
+//estrutura do índice primário e dos segundo arquivo do índice secundário
 typedef struct
 {
 	int codigo, offset;
 } indice1;
 
+//estrutura do índice secundário
 typedef struct
 {
 	char vacina[30];
@@ -292,6 +294,9 @@ int PerguntaCodigo(FILE **AP2)
 DESCRIÇÃO: Realiza o cadastro de vacinas
 PARÂMETROS: AP1 - Arquivo principal 1
             AP2 - Arquivo principal 2
+            IndPrim - Índice primário
+            IndSec1 - Índice secundário 1
+            IndSec2 - Índice secundário 2
 */
 void CadastraVacina(FILE **AP1, FILE **AP2, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2)
 {
@@ -377,7 +382,7 @@ int ProcuraEspacoVazio(FILE **AP1, int tam_reg)
 
 /*
 DESCRIÇÃO: Pergunta o campo do qual será alterado.
-PARÂMETROS: 
+RETORNO: opcao desejada
 */
 char PerguntaOpcao()
 {
@@ -393,6 +398,8 @@ char PerguntaOpcao()
 DESCRIÇÃO: Altera os dados de uma cadastro de vacina já exitente
 PARÂMETROS: AP1 - Arquivo Principal 1
             IndPrim - Índice primário (para ser atualizado caso haja exclusão)
+            IndSec1 - Índice secundário 1
+            IndSec2 - Índice secundário 2
 */
 void AlteraDados(FILE **AP1, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2)
 {
@@ -601,7 +608,7 @@ void RecriaIndicePrim(FILE **AP1)
 	}
 }
 
-//QuickSort
+//funções para ordenação dos índices em memória principal
 void TrocaQSInd1(indice1 aux[], int i, int j) 
 {
     indice1 t = aux[i];
@@ -653,7 +660,7 @@ int ParticionarQSInd2(indice2 aux[], int left,int right,int pivo)
     pos = left;
     for(i = left; i < right; i++)
     {
-        if (strcmp(aux[i].vacina, aux[right].vacina) < 0)// aux[i].codigo < aux[right].codigo)
+        if (strcmp(aux[i].vacina, aux[right].vacina) < 0)
         {
             TrocaQSInd2(aux, i, pos);
             pos++;
@@ -676,6 +683,11 @@ void QuickSortInd2(indice2 aux[], int left, int right)
     }
 }
 
+/*
+DESCRIÇÃO: Carrega os índices em arquivo para a memória primária
+PARÂMETROS: arq - arquivo de índice
+            tipo - define se é índice primário/secundário
+*/
 void CarregaIndice(FILE **arq, int tipo)
 {
 	indice1 ind1;
@@ -700,6 +712,12 @@ void CarregaIndice(FILE **arq, int tipo)
     }
 }
 
+/*
+DESCRIÇÃO: Grava os índices que estão em memória principal nos arquivos
+PARÂMETROS: IndPrim - arquivo de Índice primário
+            IndSec1 - arquivo de Índice secundário 1
+            IndSec2 - arquivo de Índice secundário 2
+*/
 void GravaIndices(FILE **IndPrim, FILE **IndSec1, FILE **IndSec2)
 {
     fclose(*IndPrim);
@@ -722,6 +740,9 @@ void GravaIndices(FILE **IndPrim, FILE **IndSec1, FILE **IndSec2)
       
 }
 
+/*
+DESCRIÇÃO: Menu de remoção de vacina
+*/
 void MenuRemoveVacina(FILE **AP1, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2)
 {
     int cod_controle, pos;
@@ -736,6 +757,14 @@ void MenuRemoveVacina(FILE **AP1, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2
     getch();
 }
 
+/*
+DESCRIÇÃO: AP1 - arquivo principal 1
+           IndPrim - arquivo de Índice primário
+           IndSec1 - arquivo de Índice secundário 1
+           IndSec2 - arquivo de Índice secundário 2
+           pos - posição do registro a ser removido
+           cod_controle - código de controle da vacina a ser removida
+*/
 void RemoveVacina(FILE **AP1, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2, int pos, int cod_controle)
 {
     int header, tam_reg, offset, offset_novo, pos_ind, cont = 0;
@@ -818,6 +847,11 @@ void RemoveVacina(FILE **AP1, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2, in
     AtualizaInfoIndice('!', IndSec2); 
 }
 
+/*
+DESCRIÇÃO: Retorna a posição de um determinado registro, procurando em memória primário
+PARÂMETRO: codigo - código de controle a ser procurado
+RETORNO: posição do registro
+*/
 int RetornaPosicao(int codigo)
 {
     for(int i = 0; i< tam1; i++)
@@ -826,6 +860,11 @@ int RetornaPosicao(int codigo)
     return -1;
 }
 
+/*
+DESCRIÇÃO: Realiza a pesquisa no arquivo, por código de controle
+PARÂMETROS: AP1 - arquivo principal 1
+            AP2 - arquivo principal 2
+*/
 void PesquisaCodPrim(FILE **AP1, FILE **AP2)
 {
     int cod_controle, cod_cachorro, offset, tam_reg;
@@ -875,6 +914,11 @@ void PesquisaCodPrim(FILE **AP1, FILE **AP2)
     getch();   
 }
 
+/*
+DESCRIÇÃO: Atualiza a lista de espaços diponíveis no arquivo principal
+PARÂMETROS: AP1 - arquivo principal 1
+            pos - posição previamente removida
+*/
 void AtualizaListaEspacosVazios(FILE **AP1, int pos)
 {
     int i = 0, aux, offset, posicao;
@@ -905,6 +949,11 @@ void AtualizaListaEspacosVazios(FILE **AP1, int pos)
     fwrite(&aux, sizeof(int), 1, *AP1);
 }
 
+/*
+DESCRIÇÃO: Realiza a compactação do arquivo principal 1
+PARÂMETROS: AP1 - arquivo principal 1
+            aux - novo arquivo compactado
+*/
 void Compacta (FILE **AP1, FILE **aux)
 {
     int dispo, tam, offset = -1, pos;
@@ -951,6 +1000,12 @@ void Compacta (FILE **AP1, FILE **aux)
     getch();
 }
 
+/*
+DESCRIÇÃO: Insere um registro no índice secundário
+PARÂMETROS: IndSec2 - arquivo de índice secundário 2
+            cod_controle - código de controle a ser inserido
+            vacina - nome da vacina a ser inserida
+*/
 void InsereIndiceSecundario(FILE **IndSec2, int cod_controle, char *vacina)
 {
     int offset, final = -1;
@@ -977,6 +1032,11 @@ void InsereIndiceSecundario(FILE **IndSec2, int cod_controle, char *vacina)
     tam2++;
 }
 
+/*
+DESCRIÇÃO: Recria o índice secundário a partir do arquivo principal 1
+PARÂMETROS: AP1 - arquivo principal 1
+            IndSec2 - arquivo de índice secundário 2
+*/
 void RecriaIndiceSec(FILE **AP1, FILE **IndSec2)
 {
     int deslocamento, aux, cod_controle, tam_reg;
@@ -1017,6 +1077,12 @@ void RecriaIndiceSec(FILE **AP1, FILE **IndSec2)
 	}
 }
 
+/*
+DESCRIÇÃO: Realiza a pesquisa por nome da vacina
+PARÂMETROS: AP1 - arquivo principal 1
+            AP2 - arquivo principal 2
+            IndSec2 - arquivo de índice secundário 2
+*/
 void PesquisaVacinaSec(FILE **AP1, FILE **AP2, FILE **IndSec2)
 {
     int cod_controle, cod_cachorro, offset, offset_AP, tam_reg;
@@ -1087,6 +1153,11 @@ void PesquisaVacinaSec(FILE **AP1, FILE **AP2, FILE **IndSec2)
     getch();   
 }
 
+/*
+DESCRIÇÃO: Retorna a posição de uma lista invertida a partir de um nome de vacina
+PARÂMETRO: vacina - nome da vacina a ser procurada
+RETORNO: posição do primeiro elemento da lista invertida
+*/
 int RetornaOffset(char *vacina)
 {
     for(int i = 0; i < tam2; i++)
