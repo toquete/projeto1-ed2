@@ -172,9 +172,9 @@ void AbreArquivos(FILE **AP1, FILE **AP2, FILE **IndPrim, FILE **IndSec1, FILE *
     	if ((ExigeRecriaIndice(IndPrim)) || (ExigeRecriaIndice(IndSec1)))
     	{
     	   RecriaIndicePrim(AP1);
-		   QuickSortInd1(INDEX1, 0, tam1);
+		   QuickSortInd1(INDEX1, 0, tam1 - 1);
            RecriaIndiceSec(AP1, IndSec2);
-           QuickSortInd2(INDEX2, 0, tam2);   
+           QuickSortInd2(INDEX2, 0, tam2 - 1);   
         }
         else
         {
@@ -330,8 +330,8 @@ void CadastraVacina(FILE **AP1, FILE **AP2, FILE **IndPrim, FILE **IndSec1, FILE
       
     INDEX1[tam1].codigo = cod_controle;
     INDEX1[tam1].offset = ftell(*AP1);
-    QuickSortInd1(INDEX1, 0, tam1);
-    tam1++;
+    tam1++; 
+    QuickSortInd1(INDEX1, 0, tam1 - 1);
     AtualizaInfoIndice('!', IndPrim);
     
     if (posicao != -1)
@@ -341,9 +341,13 @@ void CadastraVacina(FILE **AP1, FILE **AP2, FILE **IndPrim, FILE **IndSec1, FILE
     }
     
     InsereIndiceSecundario(IndSec2, cod_controle, vacina);
-    QuickSortInd2(INDEX2, 0, tam2);
+    QuickSortInd2(INDEX2, 0, tam2 - 1);
           
-    fwrite(&tam_reg, sizeof(int), 1, *AP1);
+    //fwrite(&tam_reg, sizeof(int), 1, *AP1);
+    if (posicao != -1)
+      fseek(*AP1, sizeof(int), SEEK_CUR);
+    else
+      fwrite(&tam_reg, sizeof(int), 1, *AP1);
     fputc(verificador, *AP1);
     fwrite(registro, sizeof(char), tam_reg, *AP1);
 }
@@ -480,8 +484,8 @@ void AlteraDados(FILE **AP1, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2)
           
         INDEX1[tam1].codigo = atoi(CodCo);
         INDEX1[tam1].offset = ftell(*AP1);
-        QuickSortInd1(INDEX1, 0, tam1);
         tam1++;
+        QuickSortInd1(INDEX1, 0, tam1 - 1);
         AtualizaInfoIndice('!', IndPrim);
         fwrite(&Ntam_reg, sizeof(int), 1, *AP1);
         fputc(verificador, *AP1);
@@ -489,8 +493,8 @@ void AlteraDados(FILE **AP1, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2)
     }
     else
     {
-        fseek(*AP1, pos, SEEK_SET);
-        fwrite(&Ntam_reg, sizeof(int), 1, *AP1);
+        fseek(*AP1, pos + sizeof(int), SEEK_SET);
+        //fwrite(&Ntam_reg, sizeof(int), 1, *AP1);
         fputc(verificador, *AP1);
         fwrite(registro, sizeof(char), Ntam_reg, *AP1);    
     }  
@@ -840,9 +844,9 @@ void RemoveVacina(FILE **AP1, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2, in
         cont++;        
     }
     
-    QuickSortInd1(INDEX1, 0, tam1);
+    QuickSortInd1(INDEX1, 0, tam1 - 1);
     AtualizaInfoIndice('!', IndPrim);
-    QuickSortInd2(INDEX2, 0, tam2);
+    QuickSortInd2(INDEX2, 0, tam2 - 1);
     AtualizaInfoIndice('!', IndSec1);
     AtualizaInfoIndice('!', IndSec2); 
 }
