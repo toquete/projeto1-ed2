@@ -55,7 +55,7 @@ int RetornaPosicao(int codigo);
 void MenuRemoveVacina(FILE **AP1, FILE **IndPrim, FILE **IndSec1, FILE **IndSec2);
 void PesquisaCodPrim(FILE **AP1, FILE **AP2);
 void AtualizaListaEspacosVazios(FILE **AP1, int pos);
-void Compacta (FILE **AP1, FILE **aux);
+void Compacta (FILE **AP1, FILE **IndSec2);
 void PegaCampo(FILE **AP1, char *campo);
 void InsereIndiceSecundario(FILE **IndSec2, int cod_controle, char *vacina);
 void RecriaIndiceSec(FILE **AP1, FILE **IndSec2);
@@ -65,7 +65,7 @@ void PesquisaVacinaSec(FILE **AP1, FILE **AP2, FILE **IndSec2);
 int main() 
 {
     int opcao;
-	FILE *AP1, *AP2, *IndPrim, *IndSec1, *IndSec2, *aux;
+	FILE *AP1, *AP2, *IndPrim, *IndSec1, *IndSec2;
 	
 	AbreArquivos(&AP1, &AP2, &IndPrim, &IndSec1, &IndSec2);
 	opcao = Menu();
@@ -87,19 +87,7 @@ int main()
                     break;
             case 7: PesquisaVacinaSec(&AP1, &AP2, &IndSec2);
                     break;
-            case 8: if((aux = fopen("aux.bin", "rb")) == NULL)
-                        aux = fopen("aux.bin", "wb");
-                        
-                    Compacta(&AP1, &aux);
-                    
-                    fclose(AP1);
-                    remove("AP1.bin");
-    
-                    fclose(aux);
-                    rename("aux.bin", "AP1.bin");
-                    if((AP1 = fopen("AP1.bin", "rb")) == NULL)
-                        AP1 = fopen("AP1.bin", "wb");
-                    RecriaIndicePrim(&AP1);
+            case 8: Compacta(&AP1, &IndSec2);
                     break;
 	        case 0: printf("\nSaindo do Programa...");
 	                if ((ExigeRecriaIndice(&IndPrim)) || (ExigeRecriaIndice(&IndSec1)))
@@ -992,10 +980,11 @@ DESCRIÇÃO: Realiza a compactação do arquivo principal 1
 PARÂMETROS: AP1 - arquivo principal 1
             aux - novo arquivo compactado
 */
-void Compacta (FILE **AP1, FILE **aux)
+void Compacta (FILE **AP1, FILE **IndSec2)
 {
     int tam_a, tam_b = -1, pos;
-    char status, cco[10], cca[10], vac[50], data[6], respo[50], separador = '|';
+    char status, buffer[255], cco[10], cca[10], vac[50], data[6], respo[50], separador = '|';
+    FILE *temp;
     //tam_a = tamanho do registro no arquivo principal
     //tam_b = tamanho do novo registro inserido, caso ele exista
     //status = identificador que verifica se o registro está válido
@@ -1005,61 +994,42 @@ void Compacta (FILE **AP1, FILE **aux)
     //data = data de vacinação
     //respo = responsável pela aplicação
     
-    //fputc(EOF, *AP1);
+    temp = fopen("temp.bin", "w+b");
     fseek(*AP1, sizeof(int), SEEK_SET); //pulou o header
     
-    fseek(*aux, 0, SEEK_SET);
-    fwrite(&tam_b, sizeof(int), 1, *aux);
+    fseek(temp, 0, SEEK_SET);
+    fwrite(&tam_b, sizeof(int), 1, temp);
     //tam_b é utilizado como coringa para a escrita do header no início do arquivo aux (-1)
     
-    while(!feof(*AP1)) //percorre o AP1
-    {//vai até a qtd de registros removidos
-        pos = ftell(*AP1);
-        fread(&tam_a, sizeof(int), 1, *AP1);
-        fread(&status, sizeof(char), 1, *AP1); 
-        //fseek(*AP1, sizeof(char), SEEK_SET);
-        PegaCampo(AP1, cco);
-        PegaCampo(AP1, cca);
-        PegaCampo(AP1, vac);
-        PegaCampo(AP1, data);
-        PegaCampo(AP1, respo);
-        
-        if (status == '!') //se o registro não for válido
-        {printf("a ");getch();
-            tam_b = 6*sizeof(char)+sizeof(int)+strlen(cco)+strlen(cca)+strlen(vac)+strlen(data)+strlen(respo);
-            tam_a = tam_b;
+    while(fread(&tam_a, sizeof(int), 1, *AP1)) //percorre o AP1
+    {
+        fread(&status, sizeof(char), 1, *AP1);
+        pos = ftell(*AP1); 
+        if (status != '!') //se o registro não for válido
+        {
+            PegaCampo(AP1, cco);
+            PegaCampo(AP1, cca);
+            PegaCampo(AP1, vac);
+            PegaCampo(AP1, data);
+            PegaCampo(AP1, respo);
+            sprintf(buffer, "%s|%s|%s|%s|%s|", cco, cca, vac, data, respo);
+            tam_b = strlen(buffer);
+            fwrite(&tam_b, sizeof(int), 1, temp);
+            fwrite(buffer, sizeof(char), tam_b, temp);   
         }
-        
-        else
-        {printf("b ");getch();//escreve no arquivo auxiliar
-            fwrite(&tam_a, sizeof(int), 1, *aux);
-            fwrite(&status, sizeof(char), 1, *aux);
-            fwrite(&separador, sizeof(char), 1, *aux);
-            fwrite(cco, sizeof(char), strlen(cco), *aux);
-            fwrite(&separador, sizeof(char), 1, *aux);
-            fwrite(cca, sizeof(char), strlen(cca), *aux);
-            fwrite(&separador, sizeof(char), 1, *aux);
-            fwrite(vac, sizeof(char), strlen(vac), *aux);
-            fwrite(&separador, sizeof(char), 1, *aux);
-            fwrite(data, sizeof(char), strlen(data), *aux);
-            fwrite(&separador, sizeof(char), 1, *aux);
-            fwrite(respo, sizeof(char), strlen(respo), *aux);
-            fwrite(&separador, sizeof(char), 1, *aux);
-        }
-        fseek(*AP1, tam_a, pos); //faz o offset para o próximo registro
+        fseek(*AP1, pos + tam_a, SEEK_SET);
     }
+    
+    fclose(*AP1);
+    fclose(temp);
+    remove("AP1.bin");    
+    rename("temp.bin", "AP1.bin");
+    
+    *AP1 = fopen("AP1.bin", "r+b");
+    RecriaIndicePrim(AP1);
+    RecriaIndiceSec(AP1, IndSec2);
+    
     printf("\n Arquivo compactado com sucesso!");
-    
-    /*fclose(*AP1);
-    remove("AP1.bin");
-    
-    fclose(*aux);
-    rename("aux.bin", "AP1.bin");
-    
-    if((*AP1 = fopen("AP1.bin", "rb")) == NULL)
-        *AP1 = fopen("AP1.bin", "wb");
-    RecriaIndicePrim(AP1);*/
-    
     getch();
 }
 
